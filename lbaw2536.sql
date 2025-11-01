@@ -232,3 +232,53 @@ CREATE TABLE admin_report_action (
     id_report INTEGER NOT NULL REFERENCES event_report(id_report) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+--------------------------------------------------------------------
+
+--INDEXES
+--------------------------------------------------------------------
+
+CREATE INDEX idx_event_public_active_date ON event USING btree(visibility, status, start_at);
+CLUSTER event USING idx_event_public_active_date;
+
+CREATE INDEX idx_participation_event_user ON participation USING btree (id_event, id_user);
+
+CREATE INDEX idx_invitation_event_status_user ON invitation USING btree (id_event, status, id_invitee);
+
+-- FTS INDEXES
+
+-- Add a column to store the computed tsvector.
+ALTER TABLE event
+ADD COLUMN search_fts TSVECTOR;
+
+-- Function to keep the tsvector up to date.
+CREATE FUNCTION event_search_update() RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_fts :=
+    setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
+    setweight(to_tsvector('english', COALESCE(NEW.tag, '')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+-- Create a trigger to run the function on insert/update
+CREATE TRIGGER trg_event_search_update
+  BEFORE INSERT OR UPDATE ON event
+  FOR EACH ROW
+  EXECUTE FUNCTION event_search_update();
+
+-- Finally, create a GIN index over the tsvector column
+CREATE INDEX idx_event_fts
+  ON event
+  USING GIN (search_fts);
+
+--------------------------------------------------------------------
+
+--TRIGGERS
+--------------------------------------------------------------------
+
+
+--------------------------------------------------------------------
+
+--TRANSACTIONS
+--------------------------------------------------------------------
