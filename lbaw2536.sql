@@ -237,40 +237,49 @@ CREATE TABLE admin_report_action (
 --INDEXES
 --------------------------------------------------------------------
 
-CREATE INDEX idx_event_public_active_date ON event USING btree(visibility, status, start_at);
-CLUSTER event USING idx_event_public_active_date;
+CREATE INDEX idx_event_public_active_date 
+ON event 
+USING btree(visibility, status, start_at);
+CLUSTER event 
+USING idx_event_public_active_date;
 
-CREATE INDEX idx_participation_event_user ON participation USING btree (id_event, id_user);
+CREATE INDEX idx_participation_event_user 
+ON participation 
+USING btree (id_event, id_user);
 
-CREATE INDEX idx_invitation_event_status_user ON invitation USING btree (id_event, status, id_invitee);
+CREATE INDEX idx_invitation_event_status_user 
+ON invitation 
+USING btree (id_event, status, id_invitee);
 
 -- FTS INDEXES
 
--- Add a column to store the computed tsvector.
+-- 1) Add a column to store the computed tsvector
 ALTER TABLE event
-ADD COLUMN search_fts TSVECTOR;
+ADD COLUMN IF NOT EXISTS search_fts tsvector;
 
--- Function to keep the tsvector up to date.
-CREATE FUNCTION event_search_update() RETURNS TRIGGER AS $$
+-- 2) Function to keep the tsvector up to date
+CREATE OR REPLACE FUNCTION event_search_update()
+RETURNS trigger AS $$
 BEGIN
   NEW.search_fts :=
-    setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-    setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
-    setweight(to_tsvector('english', COALESCE(NEW.tag, '')), 'B');
+      setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+      setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
+      setweight(to_tsvector('english', COALESCE(NEW.venue, '')), 'B');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
--- Create a trigger to run the function on insert/update
+-- 3) Trigger to run the function on INSERT/UPDATE
+DROP TRIGGER IF EXISTS trg_event_search_update ON event;
 CREATE TRIGGER trg_event_search_update
-  BEFORE INSERT OR UPDATE ON event
-  FOR EACH ROW
-  EXECUTE FUNCTION event_search_update();
+BEFORE INSERT OR UPDATE ON event
+FOR EACH ROW
+EXECUTE FUNCTION event_search_update();
 
--- Finally, create a GIN index over the tsvector column
-CREATE INDEX idx_event_fts
-  ON event
-  USING GIN (search_fts);
+-- 5) GIN index over the tsvector column
+CREATE INDEX IF NOT EXISTS idx_event_fts
+ON event
+USING GIN (search_fts);
 
 --------------------------------------------------------------------
 
