@@ -1,6 +1,6 @@
 SET search_path TO lbaw2536;
 
---R01 (user) 
+--R01 ("user") 
 INSERT INTO "user" (id_user, email, name, location, password_hash, status, created_at, updated_at)
 OVERRIDING SYSTEM VALUE
 VALUES

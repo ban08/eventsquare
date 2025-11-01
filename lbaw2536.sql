@@ -4,6 +4,11 @@ CREATE SCHEMA lbaw2536;
 SET search_path TO lbaw2536;
 
 
+
+-----------------------------------------------------
+--Types
+-----------------------------------------------------
+
 CREATE TYPE account_status AS ENUM ('active', 'blocked', 'deleted');
 CREATE TYPE event_visibility AS ENUM ('public', 'private');
 CREATE TYPE notification_message AS ENUM ('invited', 'event updated');
@@ -18,6 +23,12 @@ CREATE TYPE admin_report_action_type AS ENUM ('resolve report', 'dismiss report'
 CREATE TYPE tag_name AS ENUM ('workshop', 'press meet', 'career fair', 'seminar', 'art', 'gala', 'expo', 'networking');
 
 
+
+-----------------------------------------------------
+--Tables
+-----------------------------------------------------
+
+--For the user relation we used "user" (with double quotes) because user is a reserved word in PostgreSQL.
 --R01 ("user")
 CREATE TABLE "user" (
     id_user INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
