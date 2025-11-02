@@ -296,9 +296,418 @@ USING GIN (search_fts);
 
 --TRIGGERS
 --------------------------------------------------------------------
+-- 1) Event capacity limit
+-- Function to check event capacity before inserting participation
+CREATE OR REPLACE FUNCTION check_event_capacity()
+RETURNS trigger AS $$
+DECLARE
+    current_count INTEGER;
+    max_capacity INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO current_count
+    FROM participation
+    WHERE id_event = NEW.id_event AND left_at IS NULL;
 
+    SELECT capacity INTO max_capacity
+    FROM event
+    WHERE id_event = NEW.id_event;
+
+    IF current_count >= max_capacity THEN
+        RAISE EXCEPTION 'Maximum capacity reached for event %', NEW.id_event;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to apply capacity limit on participation
+DROP TRIGGER IF EXISTS trg_check_event_capacity ON participation;
+CREATE TRIGGER trg_check_event_capacity
+BEFORE INSERT ON participation
+FOR EACH ROW
+EXECUTE FUNCTION check_event_capacity();
+
+-- 2) Registration deadline
+-- Function to apply registration deadline: 24h before event
+CREATE OR REPLACE FUNCTION registration_deadline()
+RETURNS trigger AS $$
+DECLARE
+    start_time TIMESTAMP;
+BEGIN
+    SELECT start_at INTO start_time
+    FROM event
+    WHERE id_event = NEW.id_event;
+
+    IF CURRENT_TIMESTAMP >= (start_time - INTERVAL '24 hours') THEN
+        RAISE EXCEPTION 'Registration closed for event %', NEW.id_event;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for application 
+DROP TRIGGER IF EXISTS trg_deadline_application ON application;
+CREATE TRIGGER trg_deadline_application
+BEFORE INSERT ON application
+FOR EACH ROW
+EXECUTE FUNCTION registration_deadline();
+
+-- Trigger for participation
+DROP TRIGGER IF EXISTS trg_deadline_participation ON participation;
+CREATE TRIGGER trg_deadline_participation
+BEFORE INSERT ON participation
+FOR EACH ROW
+EXECUTE FUNCTION registration_deadline();
+
+
+-- 3) Participant activity window
+-- Function for overall activity window validation: 24h before event
+CREATE OR REPLACE FUNCTION check_event_activity_window(p_event_id INTEGER)
+RETURNS VOID AS $$
+DECLARE
+    start_time TIMESTAMP;
+BEGIN
+    SELECT start_at INTO start_time
+    FROM event
+    WHERE id_event = p_event_id;
+
+    IF CURRENT_TIMESTAMP >= (start_time - INTERVAL '24 hours') THEN
+        RAISE EXCEPTION 'Activity closed for event %', p_event_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function for comment activity window
+CREATE OR REPLACE FUNCTION trg_comment_activity_window()
+RETURNS trigger AS $$
+BEGIN
+    PERFORM check_event_activity_window(NEW.id_event);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for comment activity window
+DROP TRIGGER IF EXISTS trg_comment_activity_window ON comment;
+CREATE TRIGGER trg_comment_activity_window
+BEFORE INSERT ON comment
+FOR EACH ROW
+EXECUTE FUNCTION trg_comment_activity_window();
+
+-- Function for upload activity window
+CREATE OR REPLACE FUNCTION trg_upload_activity_window()
+RETURNS trigger AS $$
+BEGIN
+    PERFORM check_event_activity_window(NEW.id_event);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for upload activity window
+DROP TRIGGER IF EXISTS trg_upload_activity_window ON upload;
+CREATE TRIGGER trg_upload_activity_window
+BEFORE INSERT ON upload
+FOR EACH ROW
+EXECUTE FUNCTION trg_upload_activity_window();
+
+-- Function for comment vote activity window
+CREATE OR REPLACE FUNCTION trg_comment_vote_activity_window()
+RETURNS trigger AS $$
+DECLARE
+    event_id INTEGER;
+BEGIN
+    SELECT id_event INTO event_id FROM comment WHERE id_comment = NEW.id_comment;
+    PERFORM check_event_activity_window(event_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for comment vote activity window
+DROP TRIGGER IF EXISTS trg_comment_vote_activity_window ON comment_vote;
+CREATE TRIGGER trg_comment_vote_activity_window
+BEFORE INSERT ON comment_vote
+FOR EACH ROW
+EXECUTE FUNCTION trg_comment_vote_activity_window();
+
+-- Function for poll vote activity window
+CREATE OR REPLACE FUNCTION trg_poll_vote_activity_window()
+RETURNS trigger AS $$
+DECLARE
+    event_id INTEGER;
+BEGIN
+    SELECT id_event INTO event_id FROM poll WHERE id_poll = NEW.id_poll;
+    PERFORM check_event_activity_window(event_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for poll vote activity window
+DROP TRIGGER IF EXISTS trg_poll_vote_activity_window ON poll_vote;
+CREATE TRIGGER trg_poll_vote_activity_window
+BEFORE INSERT ON poll_vote
+FOR EACH ROW
+EXECUTE FUNCTION trg_poll_vote_activity_window();
+
+
+-- 4) Event Edit Deadline
+-- Function to apply event edit deadline
+CREATE OR REPLACE FUNCTION event_edit_deadline()
+RETURNS trigger AS $$
+DECLARE
+    hours_left INTERVAL;
+    critical_change BOOLEAN := FALSE;
+BEGIN
+    hours_left := OLD.start_at - CURRENT_TIMESTAMP;
+
+    IF NEW.title        IS DISTINCT FROM OLD.title        OR
+       NEW.description  IS DISTINCT FROM OLD.description  OR
+       NEW.visibility   IS DISTINCT FROM OLD.visibility   OR
+       NEW.status       IS DISTINCT FROM OLD.status       OR
+       NEW.capacity     IS DISTINCT FROM OLD.capacity     OR
+       NEW.start_at     IS DISTINCT FROM OLD.start_at     OR
+       NEW.end_at       IS DISTINCT FROM OLD.end_at       OR
+       NEW.venue        IS DISTINCT FROM OLD.venue THEN
+        critical_change := TRUE;
+    END IF;
+
+    IF critical_change AND hours_left < INTERVAL '24 hours' THEN
+        RAISE EXCEPTION 'Event % cannot be edited less than 24h before start', OLD.id_event;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to apply event edit restrictions
+DROP TRIGGER IF EXISTS trg_event_edit_deadline ON event;
+CREATE TRIGGER trg_event_edit_deadline
+BEFORE UPDATE ON event
+FOR EACH ROW
+EXECUTE FUNCTION event_edit_deadline();
 
 --------------------------------------------------------------------
 
 --TRANSACTIONS
 --------------------------------------------------------------------
+
+-- 1) List upcoming public events (count + next 10)
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY;
+
+-- Count upcoming public, published events
+SELECT COUNT(*)
+FROM event e
+WHERE e.visibility = 'public'
+  AND e.status = 'published'
+  AND now() < e.end_at;
+
+-- Get next 10 upcoming events (with organizer)
+SELECT e.id_event, e.title, e.start_at, e.end_at, e.venue,
+       u.id_user, u.name
+FROM event e
+JOIN "user" u ON u.id_user = e.id_organizer
+WHERE e.visibility = 'public'
+  AND e.status = 'published'
+  AND now() < e.end_at
+ORDER BY e.start_at ASC
+LIMIT 10;
+
+END TRANSACTION;
+
+
+-- 2) Create event and attach tags
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Insert event
+INSERT INTO event
+  (id_organizer, title, description, visibility, status, capacity,
+   start_at, end_at, venue, created_at)
+VALUES
+  ($id_organizer, $title, $description, $visibility, 'published', $capacity,
+   $start_at, $end_at, $venue, now());
+
+-- Attach tags (example with two tags; extend as needed)
+INSERT INTO event_tag (id_event, id_tag)
+VALUES
+  (currval('event_id_event_seq'), $id_tag_1),
+  (currval('event_id_event_seq'), $id_tag_2);
+
+END TRANSACTION;
+
+
+-- 3) Approve application and create participation
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Approve application if still pending
+UPDATE application
+   SET status = 'approved', decided_at = now()
+ WHERE id_application = $id_application
+   AND id_event = $id_event
+   AND id_user = $id_user
+   AND status = 'pending';
+
+-- Create participation (fails if already exists)
+INSERT INTO participation (id_event, id_user, joined_at)
+VALUES ($id_event, $id_user, now());
+
+END TRANSACTION;
+
+
+-- 4) Invite user to event and notify 
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Create invitation (UK(id_event, id_invitee) avoids duplicates)
+INSERT INTO invitation (id_event, id_invitee, status, sent_at)
+VALUES ($id_event, $id_invitee, 'pending', now());
+
+-- Notify invited user
+INSERT INTO notification (id_user, message, id_event, id_invitation, created_at)
+VALUES ($id_invitee, 'invited', $id_event, currval('invitation_id_invitation_seq'), now());
+
+END TRANSACTION;
+
+
+--5) Accept invitation and add participation
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Accept the invitation if still pending
+UPDATE invitation
+   SET status = 'accepted', responded_at = now()
+ WHERE id_invitation = $id_invitation
+   AND id_invitee = $id_user
+   AND status = 'pending';
+
+-- Create participation (id_event taken from the invitation)
+INSERT INTO participation (id_event, id_user, joined_at)
+SELECT i.id_event, i.id_invitee, now()
+  FROM invitation i
+ WHERE i.id_invitation = $id_invitation;
+
+END TRANSACTION;
+
+
+-- 6) Post comment and notify organizer
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Insert comment (FK ensures (id_event, id_author) exists in participation)
+INSERT INTO comment (id_event, id_author, body, created_at, is_deleted)
+VALUES ($id_event, $id_user, $body, now(), false);
+
+-- Notify organizer that there is a new comment
+INSERT INTO notification (id_user, message, id_event, created_at)
+SELECT e.id_organizer, 'event updated', $id_event, now()
+FROM event e
+WHERE e.id_event = $id_event;
+
+END TRANSACTION;
+
+
+-- 7) Cast or replace a poll vote
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Remove any previous vote by this participant in this poll
+DELETE FROM poll_vote pv
+USING poll_option po
+WHERE pv.id_participation = $id_participation
+  AND pv.id_poll = po.id_poll
+  AND po.id_poll = $id_poll;
+
+-- Insert the new vote
+INSERT INTO poll_vote (id_poll, id_option, id_participation, created_at)
+VALUES ($id_poll, $id_option, $id_participation, now());
+
+END TRANSACTION;
+
+
+-- 8) Cancel event and notify stakeholders
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Cancel event
+UPDATE event
+   SET status = 'canceled', canceled_at = now(), updated_at = now()
+ WHERE id_event = $id_event;
+
+-- Cancel pending/accepted invitations
+UPDATE invitation
+   SET status = 'canceled', responded_at = COALESCE(responded_at, now())
+ WHERE id_event = $id_event
+   AND status IN ('pending','accepted');
+
+-- Cancel pending/approved applications
+UPDATE application
+   SET status = 'canceled', decided_at = COALESCE(decided_at, now())
+ WHERE id_event = $id_event
+   AND status IN ('pending','approved');
+
+-- Notify participants and invitees
+INSERT INTO notification (id_user, message, id_event, created_at)
+SELECT p.id_user, 'event updated', $id_event, now()
+FROM participation p
+WHERE p.id_event = $id_event
+UNION
+SELECT i.id_invitee, 'event updated', $id_event, now()
+FROM invitation i
+WHERE i.id_event = $id_event;
+
+END TRANSACTION;
+
+
+-- 9) Delete user account (anonymize and cleanup)
+BEGIN TRANSACTION;
+
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Anonymize user
+UPDATE "user"
+   SET status = 'deleted',
+       name   = 'Deleted User',
+       location = NULL,
+       updated_at = now()
+ WHERE id_user = $id_user;
+
+-- Remove profile picture
+UPDATE profile
+   SET photo_url = NULL
+ WHERE id_user = $id_user;
+
+-- Soft-delete user's comments
+UPDATE comment
+   SET is_deleted = TRUE, edited_at = now()
+ WHERE (id_event, id_author) IN (
+   SELECT id_event, id_user
+   FROM participation
+   WHERE id_user = $id_user
+);
+
+-- Cancel pending invitations and applications
+UPDATE invitation
+   SET status = 'canceled', responded_at = COALESCE(responded_at, now())
+ WHERE id_invitee = $id_user
+   AND status IN ('pending','accepted');
+
+UPDATE application
+   SET status = 'canceled', decided_at = COALESCE(decided_at, now())
+ WHERE id_user = $id_user
+   AND status IN ('pending','approved');
+
+-- Close participations
+UPDATE participation
+   SET left_at = COALESCE(left_at, now())
+ WHERE id_user = $id_user;
+
+END TRANSACTION;
