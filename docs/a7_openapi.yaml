@@ -5,9 +5,6 @@ info:
   description: >-
     A7 - Web Resources Specification (vertical prototype) for EventSquare.
     Defines the prototype web (HTML) and JSON (AJAX) resources, roles/permissions, and redirect behaviors.
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: https://lbaw.fe.up.pt
@@ -15,7 +12,7 @@ servers:
   - url: http://localhost:8000
     description: Local development
 
-tags:Servers
+tags:
 
   - name: "M01: Authentication & Profile"
     description: "Login, logout, registration, and viewing the current user's profile."
