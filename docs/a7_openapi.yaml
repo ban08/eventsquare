@@ -1,50 +1,62 @@
 openapi: 3.0.0
-
 info:
   version: "1.0"
-  title: "LBAW MediaLibrary Web API"
-  description: "A7 - Web Resources Specification (vertical prototype) for MediaLibrary"
+  title: "EventSquare Web API"
+  description: >-
+    A7 - Web Resources Specification (vertical prototype) for EventSquare.
+    Defines the prototype web (HTML) and JSON (AJAX) resources, roles/permissions, and redirect behaviors.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: http://127.0.0.1:8000
-    description: Production server
+  - url: https://lbaw.fe.up.pt
+    description: Production host
+  - url: http://localhost:8000
+    description: Local development
 
-tags:
-  - name: "M01: Authentication and Individual Profile"
-  - name: "M02: Works"
-  - name: "M03: Reviews and Wishlist"
-  - name: "M04: Loans"
-  - name: "M05: User Administration and Static pages"
+tags:Servers
+
+  - name: "M01: Authentication & Profile"
+    description: "Login, logout, registration, and viewing the current user's profile."
+  - name: "M02: Events"
+    description: "Browse, search, view, create, and edit events."
+  - name: "M03: Participation (Applications & Invitations)"
+    description: "Apply to events, invite users, respond to invitations, and view my participations."
+  - name: "M04: Interactions (Comments & Polls)"
+    description: "List and create comments, delete own comments, and vote in polls."
+  - name: "M05: Admin & Static"
+    description: "Admin dashboard and static informational pages."
 
 x-permissions:
   PUB: "Public (guest users)"
   USR: "Authenticated users"
-  OWN: "Owner of the resource"
+  OWN: "Owner of the resource (e.g., comment author)"
+  ORG: "Organizer of the event (resource owner for Event)"
   ADM: "Administrators"
 
 paths:
-  ############################
+  ####################################################################
   # M01 – Authentication & Profile
-  ############################
+  ####################################################################
   /login:
     get:
       operationId: R101
       summary: "R101: Login Form"
       description: "Provide login form. Access: PUB"
-      tags: ["M01: Authentication and Individual Profile"]
+      tags: ["M01: Authentication & Profile"]
       x-permissions: PUB
+      security: []
       responses:
-        "200":
-          description: "OK. Show log-in UI (HTML)."
+        "200": { description: "OK. Show log-in UI (HTML)." }
+        "400": { description: "Bad request" }
     post:
       operationId: R102
       summary: "R102: Login Action"
       description: "Process login form submission. Access: PUB"
-      tags: ["M01: Authentication and Individual Profile"]
+      tags: ["M01: Authentication & Profile"]
       x-permissions: PUB
-      security:
-        - sessionCookie: []
-        - csrfHeader: []
+      security: []
       requestBody:
         required: true
         content:
@@ -57,52 +69,52 @@ paths:
               required: [email, password]
       responses:
         "302":
-          description: "Redirect after processing the login credentials."
+          description: "Redirect after login."
           headers:
             Location:
               schema: { type: string }
               examples:
-                success: { description: "Authenticated → profile", value: "/users/me" }
-                error:   { description: "Failed auth → back to /login", value: "/login" }
+                success: { value: "/me" }
+                error:   { value: "/login" }
+        "401": { description: "Unauthorized" }
+        "422": { description: "Validation error" }
 
   /logout:
     post:
       operationId: R103
       summary: "R103: Logout Action"
       description: "Logout current user. Access: USR, ADM"
-      tags: ["M01: Authentication and Individual Profile"]
+      tags: ["M01: Authentication & Profile"]
       x-permissions: [USR, ADM]
       security:
         - sessionCookie: []
-        - csrfHeader: []
       responses:
         "302":
           description: "Redirect after logout."
           headers:
             Location:
               schema: { type: string }
-              examples:
-                afterLogout: { value: "/login" }
-
+              example: "/login"
+        "401": { description: "Unauthorized" }
 
   /register:
     get:
       operationId: R104
       summary: "R104: Register Form"
       description: "Provide registration form. Access: PUB"
-      tags: ["M01: Authentication and Individual Profile"]
+      tags: ["M01: Authentication & Profile"]
       x-permissions: PUB
+      security: []
       responses:
         "200": { description: "OK. Show sign-up UI (HTML)." }
+        "400": { description: "Bad request" }
     post:
       operationId: R105
       summary: "R105: Register Action"
       description: "Process registration form. Access: PUB"
-      tags: ["M01: Authentication and Individual Profile"]
+      tags: ["M01: Authentication & Profile"]
       x-permissions: PUB
-      security:
-        - sessionCookie: []
-        - csrfHeader: []
+      security: []
       requestBody:
         required: true
         content:
@@ -122,77 +134,238 @@ paths:
             Location:
               schema: { type: string }
               examples:
-                success: { value: "/users/me" }
+                success: { value: "/me" }
                 failure: { value: "/register" }
+        "422": { description: "Validation error" }
 
-  /users/me:
+  /me:
     get:
       operationId: R106
-      summary: "R106: View own profile"
-      description: "Show current user profile page. Access: USR"
-      tags: ["M01: Authentication and Individual Profile"]
+      summary: "R106: My profile"
+      description: "Show current user profile. Access: USR"
+      tags: ["M01: Authentication & Profile"]
       x-permissions: USR
+      security:
+        - sessionCookie: []
       responses:
-        "200": { description: "OK. Show profile UI (HTML)." }
+        "200": { description: "OK. Profile UI (HTML)." }
+        "401": { description: "Unauthorized" }
+    delete:
+      operationId: R107
+      summary: "R107: Delete my account"
+      description: "Anonymize and deactivate the current user account, canceling pending applications/invitations and closing participations. Access: USR"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      responses:
+        "302": { description: "Redirect to /" }
         "401": { description: "Unauthorized" }
 
-  /users/{id}:
+  ####################################################################
+  # M02 – Events
+  ####################################################################
+  /tags:
     get:
-      operationId: R107
-      summary: "R107: View user public profile"
-      description: "Show public profile of a user. Access: PUB"
-      tags: ["M01: Authentication and Individual Profile"]
+      operationId: R212
+      summary: "R212: List tags (AJAX)"
+      description: "List all tags. Access: PUB"
+      tags: ["M02: Events"]
       x-permissions: PUB
-      parameters:
-        - $ref: "#/components/parameters/PathId"
+      security: []
       responses:
-        "200": { description: "OK. Show public profile UI (HTML)." }
-        "404": { description: "User not found" }
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Tag" }
+    post:
+      operationId: R213
+      summary: "R213: Create tag (action)"
+      description: "Create a new tag. Access: ADM"
+      tags: ["M02: Events"]
+      x-permissions: ADM
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/TagCreateForm"
+      responses:
+        "302": { description: "Redirect to /tags" }
+        "403": { description: "Forbidden" }
+        "422": { description: "Validation error" }
 
-  ############################
-  # M02 – Works (items)
-  ############################
-  /works:
+  /events/{eventId}/tags:
+    post:
+      operationId: R214
+      summary: "R214: Attach tag to event (action)"
+      description: "Organizer attaches existing tag to event. Access: ORG"
+      tags: ["M02: Events"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                tagId: { type: integer }
+              required: [tagId]
+      responses:
+        "302": { description: "Back to event page" }
+        "403": { description: "Forbidden" }
+        "404": { description: "Tag not found" }
+    delete:
+      operationId: R215
+      summary: "R215: Detach tag from event (action)"
+      description: "Organizer detaches tag from event. Access: ORG"
+      tags: ["M02: Events"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - in: query
+          name: tagId
+          schema: { type: integer }
+          required: true
+      responses:
+        "302": { description: "Back to event page" }
+        "403": { description: "Forbidden" }
+        "404": { description: "Tag not attached" }
+  /events:
     get:
       operationId: R201
-      summary: "R201: Works list and search (view)"
-      description: "View with filters and pagination. Access: PUB"
-      tags: ["M02: Works"]
+      summary: "R201: Events list (view)"
+      description: "Public/published upcoming events (filters, pagination). Access: PUB"
+      tags: ["M02: Events"]
       x-permissions: PUB
+      security: []
       parameters:
         - $ref: "#/components/parameters/Q"
         - $ref: "#/components/parameters/Page"
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+        - in: query
+          name: tag
+          schema: { type: string }
       responses:
-        "200": { description: "OK. Show works list UI (HTML)." }
+        "200": { description: "OK. Events list UI (HTML)." }
+        "400": { description: "Bad request (invalid filters)" }
+    post:
+      operationId: R207
+      summary: "R207: Create event (action)"
+      description: "Create a new event. Access: USR (becomes ORG on create)"
+      tags: ["M02: Events"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/EventCreateForm"
+      responses:
+        "302":
+          description: "Redirect to created event."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "401": { description: "Unauthorized" }
+        "422":
+          description: "Validation error"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
-  /works/{id}:
+  /events/create:
     get:
       operationId: R202
-      summary: "R202: Work details (view)"
-      description: "Show work details page. Access: PUB"
-      tags: ["M02: Works"]
-      x-permissions: PUB
-      parameters:
-        - $ref: "#/components/parameters/PathId"
+      summary: "R202: Create event form"
+      description: "Show create form. Access: USR"
+      tags: ["M02: Events"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
       responses:
-        "200": { description: "OK. Show work page UI (HTML)." }
-        "404": { description: "Work not found" }
+        "200": { description: "OK. Event creation UI (HTML)." }
 
-  /api/works:
+  /events/{eventId}:
     get:
       operationId: R203
-      summary: "R203: Search Works (AJAX)"
-      description: "Return works as JSON for live search. Access: PUB"
-      tags: ["M02: Works"]
+      summary: "R203: Event details (view)"
+      description: "Event page with participants/interactions. Access: PUB"
+      tags: ["M02: Events"]
       x-permissions: PUB
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200": { description: "OK. Event page UI (HTML)." }
+        "404": { description: "Not found" }
+    patch:
+      operationId: R204
+      summary: "R204: Edit/cancel event (action)"
+      description: "Organizer edits event fields or cancels event (24h rule). Access: ORG"
+      tags: ["M02: Events"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/EventUpdateForm"
+                - type: object
+                  properties:
+                    status: { type: string, enum: [draft, published, canceled] }
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "403": { description: "Forbidden (not organizer)" }
+        "409": { description: "Edit deadline reached" }
+        "422":
+          description: "Validation error"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/events:
+    get:
+      operationId: R206
+      summary: "R206: Search events (AJAX)"
+      description: "JSON results for public/published/upcoming; supports FTS/tag/date. Access: PUB"
+      tags: ["M02: Events"]
+      x-permissions: PUB
+      security: []
       parameters:
         - $ref: "#/components/parameters/Q"
         - in: query
-          name: type
-          schema: { type: string, enum: [BOOK, DVD, MP3, OTHER] }
+          name: tag
+          schema: { type: string }
         - in: query
-          name: year
-          schema: { type: integer }
+          name: date
+          schema: { type: string, format: date }
         - $ref: "#/components/parameters/Page"
       responses:
         "200":
@@ -201,33 +374,57 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/WorkSummary" }
+                items: { $ref: "#/components/schemas/EventSummary" }
               examples:
                 sample:
                   value:
                     - id: 1
-                      title: "Rihanna - Unapologetic"
-                      year: 2012
-                      type: "MP3"
-                      ownerName: "Joana Lima"
+                      title: "Community Beach Cleanup"
+                      startAt: "2025-08-12T10:00:00Z"
+                      endAt: "2025-08-12T12:00:00Z"
+                      venue: "Praia do Carneiro"
+                      organizerName: "Joana Lima"
                     - id: 15
-                      title: "Mr. Bean"
-                      year: 1995
-                      type: "DVD"
-                      ownerName: "Manuel Teixeira"
+                      title: "Local Indie Concert"
+                      startAt: "2025-09-01T21:00:00Z"
+                      endAt: null
+                      venue: "Hard Club"
+                      organizerName: "Manuel Teixeira"
+        "400": { description: "Bad request (invalid query)" }
 
-  ############################
-  # M03 – Reviews & Wishlist
-  ############################
-  /api/works/{id}/reviews:
-    get:
+  ####################################################################
+  # M03 – Participation (Applications & Invitations)
+  ####################################################################
+  /events/{eventId}/applications:
+    post:
       operationId: R301
-      summary: "R301: List reviews for a work (AJAX)"
-      description: "Return reviews as JSON. Access: PUB"
-      tags: ["M03: Reviews and Wishlist"]
-      x-permissions: PUB
+      summary: "R301: Create application"
+      description: "User submits an application; capacity and deadline enforced. Access: USR"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
       parameters:
-        - $ref: "#/components/parameters/PathId"
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "401": { description: "Unauthorized" }
+        "409": { description: "Capacity reached or application deadline passed" }
+    get:
+      operationId: R309
+      summary: "R309: List applications (organizer)"
+      description: "List pending and decided applications for an event. Access: ORG"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
         - $ref: "#/components/parameters/Page"
       responses:
         "200":
@@ -236,20 +433,20 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/Review" }
+                items: { $ref: "#/components/schemas/Application" }
+        "403": { description: "Forbidden (not organizer)" }
 
-  /works/{id}/reviews:
+  /events/{eventId}/invitations:
     post:
       operationId: R302
-      summary: "R302: Create review (action)"
-      description: "Submit review for a work. Access: USR"
-      tags: ["M03: Reviews and Wishlist"]
-      x-permissions: USR
-      parameters:
-        - $ref: "#/components/parameters/PathId"
+      summary: "R302: Create invitation"
+      description: "Organizer invites a user. Access: ORG"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: ORG
       security:
         - sessionCookie: []
-        - csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
@@ -257,142 +454,48 @@ paths:
             schema:
               type: object
               properties:
-                rating: { type: integer, minimum: 1, maximum: 5 }
-                body: { type: string, maxLength: 1000 }
-              required: [rating]
+                inviteeId: { type: integer }
+              required: [inviteeId]
       responses:
         "302":
-          description: "Redirect back to work page."
+          description: "Back to event page."
           headers:
             Location:
               schema: { type: string }
-              example: "/works/{id}"
-        "401": { description: "Unauthorized" }
-
-  /reviews/{rid}:
-    delete:
-      operationId: R303
-      summary: "R303: Delete own review (action)"
-      description: "Remove a review you authored. Access: OWN"
-      tags: ["M03: Reviews and Wishlist"]
-      x-permissions: OWN
-      parameters:
-        - in: path
-          name: rid
-          required: true
-          schema: { type: integer }
-      security:
-        - sessionCookie: []
-        - csrfHeader: []
-      responses:
-        "302":
-          description: "Redirect back to previous page."
-          headers:
-            Location:
-              schema: { type: string }
-              example: "/works/{id}"
-        "403": { description: "Forbidden (not owner)" }
-
-  /me/wishlist:
+              example: "/events/{eventId}"
+        "403": { description: "Forbidden (not organizer)" }
     get:
-      operationId: R304
-      summary: "R304: View wishlist (view)"
-      description: "Show current user's wishlist. Access: USR"
-      tags: ["M03: Reviews and Wishlist"]
-      x-permissions: USR
-      responses:
-        "200": { description: "OK. Wishlist UI (HTML)." }
-        "401": { description: "Unauthorized" }
-
-  /works/{id}/wishlist:
-    post:
-      operationId: R305
-      summary: "R305: Add to wishlist (action)"
-      description: "Add work to user's wishlist. Access: USR"
-      tags: ["M03: Reviews and Wishlist"]
-      x-permissions: USR
-      parameters:
-        - $ref: "#/components/parameters/PathId"
+      operationId: R310
+      summary: "R310: List invitations (organizer)"
+      description: "List pending and responded invitations for an event. Access: ORG"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: ORG
       security:
         - sessionCookie: []
-        - csrfHeader: []
-      responses:
-        "302":
-          description: "Redirect back to work page."
-          headers:
-            Location:
-              schema: { type: string }
-              example: "/works/{id}"
-    delete:
-      operationId: R306
-      summary: "R306: Remove from wishlist (action)"
-      description: "Remove work from user's wishlist. Access: USR"
-      tags: ["M03: Reviews and Wishlist"]
-      x-permissions: USR
       parameters:
-        - $ref: "#/components/parameters/PathId"
-      security:
-        - sessionCookie: []
-        - csrfHeader: []
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/Page"
       responses:
-        "302":
-          description: "Redirect back to work page."
-          headers:
-            Location:
-              schema: { type: string }
-              example: "/works/{id}"
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Invitation" }
+        "403": { description: "Forbidden (not organizer)" }
 
-  ############################
-  # M04 – Loans
-  ############################
-  /me/loans:
-    get:
-      operationId: R401
-      summary: "R401: View my loans (view)"
-      description: "Show current user's loans. Access: USR"
-      tags: ["M04: Loans"]
-      x-permissions: USR
-      responses:
-        "200": { description: "OK. Loans UI (HTML)." }
-
-  /works/{id}/loans:
-    post:
-      operationId: R402
-      summary: "R402: Request loan (action)"
-      description: "Create a new loan request for a work (cannot loan own items). Access: USR"
-      tags: ["M04: Loans"]
-      x-permissions: USR
-      parameters:
-        - $ref: "#/components/parameters/PathId"
-      security:
-        - sessionCookie: []
-        - csrfHeader: []
-      requestBody:
-        required: false
-      responses:
-        "302":
-          description: "Redirect back to work page."
-          headers:
-            Location:
-              schema: { type: string }
-              example: "/works/{id}"
-        "409": { description: "Conflict (already loaned)" }
-
-  /loans/{lid}:
+  /invitations/{invitationId}:
     patch:
-      operationId: R403
-      summary: "R403: Return / close loan (action)"
-      description: "Mark a loan as returned. Access: OWN or ADM"
-      tags: ["M04: Loans"]
+      operationId: R303
+      summary: "R303: Accept/decline invitation (action)"
+      description: "Invitee accepts; participation is created, or declines. Access: OWN"
+      tags: ["M03: Participation (Applications & Invitations)"]
       x-permissions: OWN
-      parameters:
-        - in: path
-          name: lid
-          required: true
-          schema: { type: integer }
       security:
         - sessionCookie: []
-        - csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
       requestBody:
         required: true
         content:
@@ -400,102 +503,605 @@ paths:
             schema:
               type: object
               properties:
-                status: { type: string, enum: [returned] }
+                status: { type: string, enum: [accepted, declined] }
               required: [status]
       responses:
         "302":
-          description: "Redirect back to /me/loans."
+          description: "Back to /me or event page."
           headers:
             Location:
               schema: { type: string }
-              example: "/me/loans"
+              example: "/me"
+        "401": { description: "Unauthorized" }
+        "403": { description: "Forbidden (not invitation owner)" }
+        "404": { description: "Not found" }
+    delete:
+      operationId: R307
+      summary: "R307: Revoke invitation (action)"
+      description: "Organizer revokes a pending invitation. Access: ORG"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "302": { description: "Back to event page" }
+        "403": { description: "Forbidden (not organizer)" }
+        "409": { description: "Invitation already responded" }
+        "404": { description: "Not found" }
 
-  ############################
+  /applications/{applicationId}:
+    patch:
+      operationId: R305
+      summary: "R305: Decide application (approve/decline)"
+      description: "Organizer decides an application. If approved, participation is created. Access: ORG"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ApplicationDecisionForm"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "403": { description: "Forbidden (not organizer)" }
+        "409": { description: "Decision deadline passed" }
+        "404": { description: "Not found" }
+    delete:
+      operationId: R306
+      summary: "R306: Cancel own application (action)"
+      description: "User cancels a pending application. Access: OWN"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: OWN
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "302": { description: "Back to event page" }
+        "403": { description: "Forbidden (not owner or already decided)" }
+        "409": { description: "Application already decided" }
+        "404": { description: "Not found" }
+
+  /participations/{participationId}:
+    patch:
+      operationId: R308
+      summary: "R308: Leave participation (action)"
+      description: "Participant leaves an event (sets left_at). Access: OWN"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: OWN
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ParticipationId"
+      responses:
+        "302": { description: "Back to /me" }
+        "403": { description: "Forbidden (not participant)" }
+        "409": { description: "Already left" }
+
+  /me/events:
+    get:
+      operationId: R304
+      summary: "R304: My participations (view)"
+      description: "List of events I’m participating in. Access: USR"
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      responses:
+        "200": { description: "OK. HTML view." }
+
+  ####################################################################
+  # M04 – Interactions (Comments & Polls)
+  ####################################################################
+  /events/{eventId}/comments:
+    get:
+      operationId: R401
+      summary: "R401: List comments (AJAX)"
+      description: "JSON comments for event. Access: PUB"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: PUB
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Comment" }
+        "400": { description: "Bad request (invalid page)" }
+    post:
+      operationId: R402
+      summary: "R402: Create comment (action)"
+      description: "Participant posts a comment (activity window rules apply). Access: USR"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                body: { type: string, maxLength: 1000 }
+              required: [body]
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              examples:
+                success: { value: "/events/{eventId}" }
+                error:   { value: "/events/{eventId}" }
+        "401": { description: "Unauthorized" }
+        "403": { description: "Activity window closed" }
+        "422":
+          description: "Validation error"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /comments/{commentId}:
+    delete:
+      operationId: R403
+      summary: "R403: Delete own comment (action)"
+      description: "Soft-delete own comment. Access: OWN"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: OWN
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CommentId"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "403": { description: "Forbidden (not owner)" }
+
+  /comments/{commentId}/vote:
+    post:
+      operationId: R405
+      summary: "R405: Vote on comment (action)"
+      description: "Cast or replace a vote on a comment. Access: USR"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CommentId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/CommentVoteForm"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "401": { description: "Unauthorized" }
+        "403": { description: "Activity window closed" }
+        "422": { description: "Validation error" }
+
+  /events/{eventId}/polls:
+    get:
+      operationId: R412
+      summary: "R412: List polls (AJAX)"
+      description: "List polls for event with options and aggregated counts. Access: PUB"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: PUB
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Poll" }
+    post:
+      operationId: R406
+      summary: "R406: Create poll (action)"
+      description: "Organizer creates a poll for an event. Access: ORG"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/PollCreateForm"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "403": { description: "Forbidden (not organizer) or activity window closed" }
+        "422": { description: "Validation error" }
+
+  /polls/{pollId}/options:
+    post:
+      operationId: R407
+      summary: "R407: Add poll option (action)"
+      description: "Organizer adds an option to a poll. Access: ORG"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: ORG
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/PollId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/PollOptionCreateForm"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "403": { description: "Forbidden (not organizer) or activity window closed" }
+        "422": { description: "Validation error" }
+
+  /events/{eventId}/uploads:
+    post:
+      operationId: R408
+      summary: "R408: Upload event file (action)"
+      description: "Participant uploads a file related to event. Access: USR"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UploadForm"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "401": { description: "Unauthorized" }
+        "403": { description: "Activity window closed" }
+        "422": { description: "Validation error" }
+    get:
+      operationId: R414
+      summary: "R414: List event uploads (AJAX)"
+      description: "List uploads for an event. Access: USR (participant) or ORG"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Upload" }
+        "403": { description: "Forbidden" }
+
+  /uploads/{uploadId}:
+    get:
+      operationId: R415
+      summary: "R415: Get upload metadata (AJAX)"
+      description: "Retrieve metadata for a single upload (download separate). Access: OWN or ORG or ADM"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: OWN
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Upload" }
+        "403": { description: "Forbidden" }
+        "404": { description: "Not found" }
+    delete:
+      operationId: R416
+      summary: "R416: Delete upload (action)"
+      description: "Delete an upload. Access: OWN or ORG or ADM"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: OWN
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/UploadId"
+      responses:
+        "302": { description: "Back to event page" }
+        "403": { description: "Forbidden" }
+        "404": { description: "Not found" }
+
+  /polls/{pollId}/vote:
+    post:
+      operationId: R404
+      summary: "R404: Vote in poll (action)"
+      description: "Participant votes/changes vote in poll (activity window applies). Access: USR"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/PollId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                optionId: { type: integer }
+              required: [optionId]
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "401": { description: "Unauthorized" }
+        "403": { description: "Activity window closed" }
+        "409": { description: "Already voted or invalid option" }
+        "422":
+          description: "Validation error"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /polls/{pollId}:
+    get:
+      operationId: R413
+      summary: "R413: Poll details (AJAX)"
+      description: "Get poll with options and aggregated vote counts. Access: PUB"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: PUB
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/PollId"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Poll" }
+        "404": { description: "Not found" }
+
+  ####################################################################
   # M05 – Admin & Static
-  ############################
+  ####################################################################
+  /events/{eventId}/reports:
+    post:
+      operationId: R208
+      summary: "R208: Create report"
+      description: "User reports an event for review. Access: USR"
+      tags: ["M05: Admin & Static"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ReportForm"
+      responses:
+        "302":
+          description: "Back to event page."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/events/{eventId}"
+        "401": { description: "Unauthorized" }
+        "409": { description: "Already reported recently" }
+    get:
+      operationId: R511
+      summary: "R511: List reports (admin)"
+      description: "List reports for an event (moderation queue). Access: ADM"
+      tags: ["M05: Admin & Static"]
+      x-permissions: ADM
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Report" }
+        "403": { description: "Forbidden (not admin)" }
+
+  /reports/{reportId}:
+    patch:
+      operationId: R503
+      summary: "R503: Resolve report (admin)"
+      description: "Admin marks a report as resolved or takes action. Access: ADM"
+      tags: ["M05: Admin & Static"]
+      x-permissions: ADM
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ReportId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [resolved, dismissed] }
+                details: { type: string }
+              required: [status]
+      responses:
+        "302": { description: "Back to admin dashboard." }
+        "403": { description: "Forbidden" }
+        "404": { description: "Report not found" }
+
+  /admin/events/{eventId}/actions:
+    post:
+      operationId: R508
+      summary: "R508: Admin event action (moderation)"
+      description: "Admin performs moderation action on event (e.g., suspend, feature). Access: ADM"
+      tags: ["M05: Admin & Static"]
+      x-permissions: ADM
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/AdminEventActionForm"
+      responses:
+        "302": { description: "Back to admin dashboard" }
+        "403": { description: "Forbidden" }
+        "422": { description: "Validation error" }
+
+  /admin/users/{userId}/actions:
+    post:
+      operationId: R509
+      summary: "R509: Admin user action (moderation)"
+      description: "Admin performs moderation action on user (e.g., ban, reinstate). Access: ADM"
+      tags: ["M05: Admin & Static"]
+      x-permissions: ADM
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/AdminUserActionForm"
+      responses:
+        "302": { description: "Back to admin dashboard" }
+        "403": { description: "Forbidden" }
+        "422": { description: "Validation error" }
+
+  /me/notifications:
+    get:
+      operationId: R409
+      summary: "R409: List my notifications (AJAX)"
+      description: "List current user's notifications in JSON. Access: USR"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Notification" }
+    patch:
+      operationId: R410
+      summary: "R410: Mark all my notifications read"
+      description: "Mark all notifications as read. Access: USR"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: USR
+      security:
+        - sessionCookie: []
+      responses:
+        "204": { description: "No Content" }
+
+  /notifications/{notificationId}:
+    patch:
+      operationId: R411
+      summary: "R411: Mark notification read"
+      description: "Mark one notification as read. Access: OWN"
+      tags: ["M04: Interactions (Comments & Polls)"]
+      x-permissions: OWN
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "204": { description: "No Content" }
   /admin:
     get:
       operationId: R501
       summary: "R501: Admin dashboard"
       description: "Admin entry page. Access: ADM"
-      tags: ["M05: User Administration and Static pages"]
+      tags: ["M05: Admin & Static"]
       x-permissions: ADM
+      security:
+        - sessionCookie: []
       responses:
         "200": { description: "OK. Admin UI (HTML)." }
         "403": { description: "Forbidden" }
 
-  /admin/users:
-    get:
-      operationId: R502
-      summary: "R502: List/search users (view)"
-      description: "Admin users list with filters. Access: ADM"
-      tags: ["M05: User Administration and Static pages"]
-      x-permissions: ADM
-      parameters:
-        - $ref: "#/components/parameters/Q"
-        - $ref: "#/components/parameters/Page"
-      responses:
-        "200": { description: "OK. Users table UI (HTML)." }
-
-  /admin/users/{id}:
-    get:
-      operationId: R503
-      summary: "R503: View user (admin)"
-      description: "Admin view of a user's profile. Access: ADM"
-      tags: ["M05: User Administration and Static pages"]
-      x-permissions: ADM
-      parameters:
-        - $ref: "#/components/parameters/PathId"
-      responses:
-        "200": { description: "OK. Admin user UI (HTML)." }
-        "404": { description: "Not found" }
-    patch:
-      operationId: R504
-      summary: "R504: Block/Unblock user (action)"
-      description: "Toggle user status. Access: ADM"
-      tags: ["M05: User Administration and Static pages"]
-      x-permissions: ADM
-      parameters:
-        - $ref: "#/components/parameters/PathId"
-      security:
-        - sessionCookie: []
-        - csrfHeader: []
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                status: { type: string, enum: [block, unblock] }
-              required: [status]
-      responses:
-        "302":
-          description: "Redirect back to admin user page."
-          headers:
-            Location:
-              schema: { type: string }
-              example: "/admin/users/{id}"
-
   /about:
     get:
-      operationId: R505
-      summary: "R505: Static About page"
+      operationId: R502
+      summary: "R502: About"
       description: "Static content. Access: PUB"
-      tags: ["M05: User Administration and Static pages"]
+      tags: ["M05: Admin & Static"]
       x-permissions: PUB
+      security: []
       responses:
         "200": { description: "OK. HTML page." }
+        "404": { description: "Not found" }
 
-  /contact:
-    get:
-      operationId: R506
-      summary: "R506: Static Contact page"
-      description: "Static content. Access: PUB"
-      tags: ["M05: User Administration and Static pages"]
-      x-permissions: PUB
-      responses:
-        "200": { description: "OK. HTML page." }
+  
 
 components:
   securitySchemes:
@@ -504,22 +1110,67 @@ components:
       in: cookie
       name: laravel_session
       description: "Session cookie set by Laravel after login."
-    csrfHeader:
-      type: apiKey
-      in: header
-      name: X-CSRF-TOKEN
-      description: "CSRF token for AJAX POST/PUT/PATCH/DELETE."
 
   parameters:
-    PathId:
+    EventId:
       in: path
-      name: id
+      name: eventId
+      required: true
+      schema: { type: integer }
+    InvitationId:
+      in: path
+      name: invitationId
+      required: true
+      schema: { type: integer }
+    CommentId:
+      in: path
+      name: commentId
+      required: true
+      schema: { type: integer }
+    ParticipationId:
+      in: path
+      name: participationId
+      required: true
+      schema: { type: integer }
+    UploadId:
+      in: path
+      name: uploadId
+      required: true
+      schema: { type: integer }
+    TagId:
+      in: path
+      name: tagId
+      required: true
+      schema: { type: integer }
+    UserId:
+      in: path
+      name: userId
+      required: true
+      schema: { type: integer }
+    ApplicationId:
+      in: path
+      name: applicationId
+      required: true
+      schema: { type: integer }
+    NotificationId:
+      in: path
+      name: notificationId
+      required: true
+      schema: { type: integer }
+    ReportId:
+      in: path
+      name: reportId
+      required: true
+      schema: { type: integer }
+    PollId:
+      in: path
+      name: pollId
       required: true
       schema: { type: integer }
     Q:
       in: query
       name: q
-      description: "Free-text search"
+      description: "Full-text search over events"
       schema: { type: string }
     Page:
       in: query
@@ -533,51 +1184,175 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        email: { type: string, format: email }
-        avatarUrl: { type: string }
         role: { type: string, enum: [USR, ADM] }
 
-    WorkSummary:
+    EventSummary:
       type: object
       properties:
         id: { type: integer }
         title: { type: string }
-        year: { type: integer }
-        type: { type: string, enum: [BOOK, DVD, MP3, OTHER] }
-        ownerName: { type: string }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time, nullable: true }
+        venue: { type: string }
+        organizerName: { type: string }
 
-    Work:
-      allOf:
-        - $ref: "#/components/schemas/WorkSummary"
-        - type: object
-          properties:
-            description: { type: string }
-            ownerId: { type: integer }
+    EventCreateForm:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        visibility: { type: string, enum: [public, private] }
+        status: { type: string, enum: [draft, published] }
+        capacity: { type: integer, minimum: 1 }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        venue: { type: string }
+      required: [title, visibility, status, capacity, start_at, venue]
 
-    Review:
+    EventUpdateForm:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        visibility: { type: string, enum: [public, private] }
+        capacity: { type: integer, minimum: 1 }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        venue: { type: string }
+
+    Comment:
       type: object
       properties:
         id: { type: integer }
-        workId: { type: integer }
+        eventId: { type: integer }
         author: { $ref: "#/components/schemas/User" }
-        rating: { type: integer, minimum: 1, maximum: 5 }
         body: { type: string }
         createdAt: { type: string, format: date-time }
 
-    Loan:
+    Notification:
       type: object
       properties:
         id: { type: integer }
-        workId: { type: integer }
-        borrower: { $ref: "#/components/schemas/User" }
-        status: { type: string, enum: [pending, active, returned] }
-        startDate: { type: string, format: date }
-        endDate: { type: string, format: date, nullable: true }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time, nullable: true }
 
     Error:
       type: object
       properties:
         message: { type: string }
 
-security:
-  - sessionCookie: []
+    Application:
+      type: object
+      properties:
+        id: { type: integer }
+        eventId: { type: integer }
+        applicant: { $ref: "#/components/schemas/User" }
+        status: { type: string, enum: [pending, approved, declined] }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time, nullable: true }
+
+    Invitation:
+      type: object
+      properties:
+        id: { type: integer }
+        eventId: { type: integer }
+        invitee: { $ref: "#/components/schemas/User" }
+        status: { type: string, enum: [pending, accepted, declined, revoked] }
+        createdAt: { type: string, format: date-time }
+        respondedAt: { type: string, format: date-time, nullable: true }
+
+    Report:
+      type: object
+      properties:
+        id: { type: integer }
+        eventId: { type: integer }
+        reporter: { $ref: "#/components/schemas/User" }
+        reason: { type: string }
+        status: { type: string, enum: [open, resolved] }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+
+    ApplicationDecisionForm:
+      type: object
+      properties:
+        status: { type: string, enum: [approved, declined] }
+      required: [status]
+
+    CommentVoteForm:
+      type: object
+      properties:
+        value: { type: integer, enum: [-1, 1] }
+      required: [value]
+
+    PollCreateForm:
+      type: object
+      properties:
+        question: { type: string }
+      required: [question]
+
+    PollOptionCreateForm:
+      type: object
+      properties:
+        label: { type: string }
+      required: [label]
+
+    UploadForm:
+      type: object
+      properties:
+        file: { type: string, format: binary }
+      required: [file]
+
+    ReportForm:
+      type: object
+      properties:
+        reason: { type: string }
+      required: [reason]
+    Tag:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    TagCreateForm:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
+    Upload:
+      type: object
+      properties:
+        id: { type: integer }
+        eventId: { type: integer }
+        uploaderId: { type: integer }
+        fileName: { type: string }
+        url: { type: string }
+        createdAt: { type: string, format: date-time }
+    PollOption:
+      type: object
+      properties:
+        id: { type: integer }
+        label: { type: string }
+        votes: { type: integer }
+    Poll:
+      type: object
+      properties:
+        id: { type: integer }
+        eventId: { type: integer }
+        question: { type: string }
+        createdAt: { type: string, format: date-time }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/PollOption" }
+    AdminEventActionForm:
+      type: object
+      properties:
+        action: { type: string, enum: [suspend, feature, unsuspend] }
+        details: { type: string }
+      required: [action]
+    AdminUserActionForm:
+      type: object
+      properties:
+        action: { type: string, enum: [ban, reinstate] }
+        details: { type: string }
+      required: [action]
+
