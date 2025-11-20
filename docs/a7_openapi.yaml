@@ -37,22 +37,29 @@ paths:
   # M01 – Authentication & Profile
   ####################################################################
   /login:
+    # VIEW endpoint: show login form (HTML page)
     get:
       operationId: R101
       summary: "R101: Login Form"
-      description: "Provide login form. Access: PUB"
+      description: "Show the login form. Implements VT02 (view). Access: PUB."
       tags: ["M01: Authentication & Profile"]
-      x-permissions: PUB
+      x-permissions: [PUB]                       # anyone can see the login page
       security: []
       responses:
-        "200": { description: "OK. Show log-in UI (HTML)." }
-        "400": { description: "Bad request" }
+        "200":
+          description: "OK. Returns HTML for the login page."
+        "400":
+          description: "Bad request."
+
+    # ACTION endpoint: process login, then redirect      
     post:
       operationId: R102
       summary: "R102: Login Action"
-      description: "Process login form submission. Access: PUB"
+      description: |
+        Process login credentials. On success, creates a session and redirects.
+        Access: PUB.
       tags: ["M01: Authentication & Profile"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       requestBody:
         required: true
@@ -61,57 +68,80 @@ paths:
             schema:
               type: object
               properties:
-                email: { type: string, format: email }
-                password: { type: string }
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
               required: [email, password]
       responses:
         "302":
           description: "Redirect after login."
           headers:
             Location:
-              schema: { type: string }
+              schema:
+                type: string
               examples:
-                success: { value: "/me" }
-                error:   { value: "/login" }
-        "401": { description: "Unauthorized" }
-        "422": { description: "Validation error" }
+                success:
+                  value: "/me"       # go to my profile on success
+                error:
+                  value: "/login"    # back to login on error
+        "401":
+          description: "Unauthorized (wrong email/password)."
+        "422":
+          description: "Validation error (e.g., missing fields)."
 
   /logout:
+    # ACTION endpoint: logout current user and redirect
     post:
       operationId: R103
       summary: "R103: Logout Action"
-      description: "Logout current user. Access: USR, ADM"
+      description: |
+        Logout current user (destroy session) and redirect to login.
+        Implements RU08: Logout.
       tags: ["M01: Authentication & Profile"]
-      x-permissions: [USR, ADM]
+      x-permissions: [USR, ADM]       # must be logged in
       security:
-        - sessionCookie: []
+        - sessionCookie: []           # requires valid session cookie
       responses:
         "302":
           description: "Redirect after logout."
           headers:
             Location:
-              schema: { type: string }
+              schema:
+                type: string
               example: "/login"
-        "401": { description: "Unauthorized" }
+        "401":
+          description: "Unauthorized (not logged in)."
 
   /register:
+    # VIEW endpoint: show registration form (HTML)
     get:
       operationId: R104
       summary: "R104: Register Form"
-      description: "Provide registration form. Access: PUB"
+      description: |
+        Show registration form. Access: PUB.
+        Implements VT01 (view part).
       tags: ["M01: Authentication & Profile"]
-      x-permissions: PUB
-      security: []
+      x-permissions: [PUB]
+      security: []                    # public page
       responses:
-        "200": { description: "OK. Show sign-up UI (HTML)." }
-        "400": { description: "Bad request" }
+        "200":
+          description: "OK. Returns HTML with the sign-up form."
+        "400":
+          description: "Bad request."
+
+    # ACTION endpoint: process registration and redirect      
     post:
       operationId: R105
       summary: "R105: Register Action"
-      description: "Process registration form. Access: PUB"
+      description: |
+        Process registration form and create a new user account.
+        On success, usually logs in the user and redirects to /me.
+        Implements VT01 (action part).
       tags: ["M01: Authentication & Profile"]
-      x-permissions: PUB
-      security: []
+      x-permissions: [PUB]
+      security: []                    # no cookie yet
       requestBody:
         required: true
         content:
@@ -121,32 +151,41 @@ paths:
               properties:
                 name: { type: string }
                 email: { type: string, format: email }
+                username: { type: string }
                 password: { type: string, minLength: 8 }
+                password_confirmation: { type: string }
                 picture: { type: string, format: binary }
-              required: [name, email, password]
+              required: [name, email, username, password, password_confirmation]
       responses:
         "302":
           description: "Redirect after registration."
           headers:
             Location:
-              schema: { type: string }
+              schema:
+                type: string
               examples:
-                success: { value: "/me" }
-                failure: { value: "/register" }
-        "422": { description: "Validation error" }
+                success:
+                  value: "/me"         # go to my profile
+                failure:
+                  value: "/register"   # show form again with errors
+        "422":
+          description: "Validation error."
 
   /me:
+    # VIEW endpoint: show current user's profile page
     get:
       operationId: R106
       summary: "R106: My profile"
-      description: "Show current user profile. Access: USR"
+      description: "Show the currently authenticated user's profile page. Access: USR"
       tags: ["M01: Authentication & Profile"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       responses:
-        "200": { description: "OK. Profile UI (HTML)." }
-        "401": { description: "Unauthorized" }
+        "200":
+          description: "OK. HTML profile page."
+        "401":
+          description: "Unauthorized (not logged in)."
     delete:
       operationId: R107
       summary: "R107: Delete my account"
@@ -239,32 +278,48 @@ paths:
         "302": { description: "Back to event page" }
         "403": { description: "Forbidden" }
         "404": { description: "Tag not attached" }
+      
   /events:
+    # VIEW endpoint: list of public/upcoming events (HTML)
     get:
       operationId: R201
       summary: "R201: Events list (view)"
-      description: "Public/published upcoming events (filters, pagination). Access: PUB"
+      description: |
+        Show a paginated list of public upcoming events.
+        Implements the main event browsing page.
+        Access: PUB.
       tags: ["M02: Events"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       parameters:
-        - $ref: "#/components/parameters/Q"
-        - $ref: "#/components/parameters/Page"
         - in: query
-          name: date
-          schema: { type: string, format: date }
+          name: q
+          description: "Full-text search over events."
+          schema:
+            type: string
         - in: query
-          name: tag
-          schema: { type: string }
+          name: page
+          description: "Pagination page (default 1)."
+          schema:
+            type: integer
+            minimum: 1
       responses:
-        "200": { description: "OK. Events list UI (HTML)." }
-        "400": { description: "Bad request (invalid filters)" }
+        "200":
+          description: "OK. HTML page with events list."
+        "400":
+          description: "Bad request (invalid filters)."
+
+    # ACTION endpoint: create a new event (OR01)      
     post:
       operationId: R207
       summary: "R207: Create event (action)"
-      description: "Create a new event. Access: USR (becomes ORG on create)"
+      description: |
+        Process the create-event form and create a new event.
+        The current user becomes the organizer.
+        Implements OR01 (action).
+        Access: USR.
       tags: ["M02: Events"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       requestBody:
@@ -275,49 +330,67 @@ paths:
               $ref: "#/components/schemas/EventCreateForm"
       responses:
         "302":
-          description: "Redirect to created event."
+          description: "Redirect to created event page."
           headers:
             Location:
-              schema: { type: string }
+              schema:
+                type: string
               example: "/events/{eventId}"
-        "401": { description: "Unauthorized" }
+        "401":
+          description: "Unauthorized (not logged in)."
         "422":
-          description: "Validation error"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
+          description: "Validation error."        
+  
   /events/create:
+    # VIEW endpoint: show create event form (HTML)
     get:
       operationId: R202
       summary: "R202: Create event form"
-      description: "Show create form. Access: USR"
+      description: |
+        Show the form to create a new event.
+        Implements OR01 (view).
+        Access: USR.
       tags: ["M02: Events"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       responses:
-        "200": { description: "OK. Event creation UI (HTML)." }
+        "200":
+          description: "OK. HTML form to create an event."
+        "401":
+          description: "Unauthorized (not logged in)."
+
 
   /events/{eventId}:
+    # VIEW endpoint: event details page (HTML)
     get:
       operationId: R203
       summary: "R203: Event details (view)"
-      description: "Event page with participants/interactions. Access: PUB"
+      description: |
+        Show the event details page, including description, date, venue, etc.
+        Access: PUB (for public events).
       tags: ["M02: Events"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       parameters:
         - $ref: "#/components/parameters/EventId"
       responses:
-        "200": { description: "OK. Event page UI (HTML)." }
-        "404": { description: "Not found" }
-    patch:
+        "200":
+          description: "OK. HTML page for a single event."
+        "404":
+          description: "Event not found."
+
+    # ACTION endpoint: update event (OR02)      
+    post:
       operationId: R204
-      summary: "R204: Edit/cancel event (action)"
-      description: "Organizer edits event fields or cancels event (24h rule). Access: ORG"
+      summary: "R204: Edit event (action)"
+      description: |
+        Process the edit-event form and update the event.
+        Only the organizer is allowed.
+        Implements OR02.
+        Access: ORG.
       tags: ["M02: Events"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -327,25 +400,51 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              allOf:
-                - $ref: "#/components/schemas/EventUpdateForm"
-                - type: object
-                  properties:
-                    status: { type: string, enum: [draft, published, canceled] }
+              $ref: "#/components/schemas/EventUpdateForm"
       responses:
         "302":
-          description: "Back to event page."
+          description: "Redirect back to the event page."
           headers:
             Location:
-              schema: { type: string }
+              schema:
+                type: string
               example: "/events/{eventId}"
-        "403": { description: "Forbidden (not organizer)" }
-        "409": { description: "Edit deadline reached" }
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (current user is not organizer)."
         "422":
-          description: "Validation error"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+          description: "Validation error."
+    
+    # ACTION endpoint: delete event (OR08)
+    delete:
+      operationId: R205
+      summary: "R205: Delete event (action)"
+      description: |
+        Delete (or cancel) an event.
+        Only the organizer can perform this action.
+        Implements OR08.
+        Access: ORG.
+      tags: ["M02: Events"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "302":
+          description: "Redirect to the events list after deletion."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/events"
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (current user is not organizer)."
+        "404":
+          description: "Event not found."
 
   /api/events:
     get:
@@ -1181,7 +1280,7 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        role: { type: string, enum: [USR, ADM] }
+
 
     EventSummary:
       type: object
@@ -1193,29 +1292,49 @@ components:
         venue: { type: string }
         organizerName: { type: string }
 
+    # Form to create an event (used in POST /events)
     EventCreateForm:
       type: object
       properties:
-        title: { type: string }
-        description: { type: string }
-        visibility: { type: string, enum: [public, private] }
-        status: { type: string, enum: [draft, published] }
-        capacity: { type: integer, minimum: 1 }
-        start_at: { type: string, format: date-time }
-        end_at: { type: string, format: date-time }
-        venue: { type: string }
-      required: [title, visibility, status, capacity, start_at, venue]
+        title:
+          type: string
+          description: "Event title"
+        description:
+          type: string
+          description: "Event description"
+        start_at:
+          type: string
+          format: date-time
+          description: "Start date and time"
+        end_at:
+          type: string
+          format: date-time
+          description: "End date and time (optional)"
+        venue:
+          type: string
+          description: "Where the event happens"
+        capacity:
+          type: integer
+          minimum: 1
+          description: "Maximum number of participants"
+      required: [title, start_at, venue, capacity] 
 
+    # Form to update an existing event (used in POST/PATCH /events/{eventId})
     EventUpdateForm:
       type: object
       properties:
         title: { type: string }
         description: { type: string }
-        visibility: { type: string, enum: [public, private] }
-        capacity: { type: integer, minimum: 1 }
-        start_at: { type: string, format: date-time }
-        end_at: { type: string, format: date-time }
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
         venue: { type: string }
+        capacity:
+          type: integer
+          minimum: 1  
 
     Comment:
       type: object
@@ -1352,4 +1471,3 @@ components:
         action: { type: string, enum: [ban, reinstate] }
         details: { type: string }
       required: [action]
-
