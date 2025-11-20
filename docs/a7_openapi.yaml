@@ -171,6 +171,74 @@ paths:
         "422":
           description: "Validation error."
 
+  /password/forgot:
+    get:
+      operationId: R108
+      summary: "R108: Forgot password form"
+      description: "Show password recovery form. Access: PUB"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [PUB]
+      security: []
+      responses:
+        "200": { description: "OK. Forgot password UI (HTML)." }
+    post:
+      operationId: R109
+      summary: "R109: Request password reset"
+      description: "Send password reset link to email if account exists. Access: PUB"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [PUB]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/PasswordForgotForm" }
+      responses:
+        "302":
+          description: "Redirect to /password/forgot with success message."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/password/forgot"
+        "422": { description: "Validation error" }
+
+  /password/reset:
+    get:
+      operationId: R110
+      summary: "R110: Reset password form"
+      description: "Show reset form using token from email. Access: PUB"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [PUB]
+      security: []
+      parameters:
+        - in: query
+          name: token
+          schema: { type: string }
+          required: true
+      responses:
+        "200": { description: "OK. Reset password UI (HTML)." }
+        "400": { description: "Bad request (missing/invalid token)" }
+    post:
+      operationId: R111
+      summary: "R111: Submit new password"
+      description: "Reset password using provided token. Access: PUB"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [PUB]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/PasswordResetForm" }
+      responses:
+        "302":
+          description: "Redirect to /login after success."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/login"
+        "422": { description: "Validation error" }
+
   /me:
     # VIEW endpoint: show current user's profile page
     get:
@@ -186,17 +254,63 @@ paths:
           description: "OK. HTML profile page."
         "401":
           description: "Unauthorized (not logged in)."
+    patch:
+      operationId: R112
+      summary: "R112: Edit my profile"
+      description: "Update profile fields (e.g., name). Access: USR"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/ProfileUpdateForm" }
+      responses:
+        "302":
+          description: "Back to /me."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/me"
+        "401": { description: "Unauthorized" }
+        "422": { description: "Validation error" }
     delete:
       operationId: R107
       summary: "R107: Delete my account"
       description: "Anonymize and deactivate the current user account, canceling pending applications/invitations and closing participations. Access: USR"
       tags: ["M01: Authentication & Profile"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       responses:
         "302": { description: "Redirect to /" }
         "401": { description: "Unauthorized" }
+
+  /me/picture:
+    post:
+      operationId: R113
+      summary: "R113: Update profile picture"
+      description: "Upload a new profile picture. Access: USR"
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/ProfilePictureForm" }
+      responses:
+        "302":
+          description: "Back to /me."
+          headers:
+            Location:
+              schema: { type: string }
+              example: "/me"
+        "401": { description: "Unauthorized" }
+        "422": { description: "Validation error" }
 
   ####################################################################
   # M02 – Events
@@ -207,7 +321,7 @@ paths:
       summary: "R212: List tags (AJAX)"
       description: "List all tags. Access: PUB"
       tags: ["M02: Events"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       responses:
         "200":
@@ -222,7 +336,7 @@ paths:
       summary: "R213: Create tag (action)"
       description: "Create a new tag. Access: ADM"
       tags: ["M02: Events"]
-      x-permissions: ADM
+      x-permissions: [ADM]
       security:
         - sessionCookie: []
       requestBody:
@@ -242,7 +356,7 @@ paths:
       summary: "R214: Attach tag to event (action)"
       description: "Organizer attaches existing tag to event. Access: ORG"
       tags: ["M02: Events"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -265,7 +379,7 @@ paths:
       summary: "R215: Detach tag from event (action)"
       description: "Organizer detaches tag from event. Access: ORG"
       tags: ["M02: Events"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -413,6 +527,8 @@ paths:
           description: "Unauthorized (not logged in)."
         "403":
           description: "Forbidden (current user is not organizer)."
+        "409":
+          description: "Edit deadline passed (less than 24h before start)."
         "422":
           description: "Validation error."
     
@@ -452,7 +568,7 @@ paths:
       summary: "R206: Search events (AJAX)"
       description: "JSON results for public/published/upcoming; supports FTS/tag/date. Access: PUB"
       tags: ["M02: Events"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       parameters:
         - $ref: "#/components/parameters/Q"
@@ -497,7 +613,7 @@ paths:
       summary: "R301: Create application"
       description: "User submits an application; capacity and deadline enforced. Access: USR"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       parameters:
@@ -510,13 +626,13 @@ paths:
               schema: { type: string }
               example: "/events/{eventId}"
         "401": { description: "Unauthorized" }
-        "409": { description: "Capacity reached or application deadline passed" }
+        "409": { description: "Application deadline passed" }
     get:
       operationId: R309
       summary: "R309: List applications (organizer)"
       description: "List pending and decided applications for an event. Access: ORG"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -538,7 +654,7 @@ paths:
       summary: "R302: Create invitation"
       description: "Organizer invites a user. Access: ORG"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -565,7 +681,7 @@ paths:
       summary: "R310: List invitations (organizer)"
       description: "List pending and responded invitations for an event. Access: ORG"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -587,7 +703,7 @@ paths:
       summary: "R303: Accept/decline invitation (action)"
       description: "Invitee accepts; participation is created, or declines. Access: OWN"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: OWN
+      x-permissions: [OWN]
       security:
         - sessionCookie: []
       parameters:
@@ -613,10 +729,10 @@ paths:
         "404": { description: "Not found" }
     delete:
       operationId: R307
-      summary: "R307: Revoke invitation (action)"
-      description: "Organizer revokes a pending invitation. Access: ORG"
+      summary: "R307: Cancel invitation (action)"
+      description: "Organizer cancels a pending invitation. Access: ORG"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -633,7 +749,7 @@ paths:
       summary: "R305: Decide application (approve/decline)"
       description: "Organizer decides an application. If approved, participation is created. Access: ORG"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -659,7 +775,7 @@ paths:
       summary: "R306: Cancel own application (action)"
       description: "User cancels a pending application. Access: OWN"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: OWN
+      x-permissions: [OWN]
       security:
         - sessionCookie: []
       parameters:
@@ -676,7 +792,7 @@ paths:
       summary: "R308: Leave participation (action)"
       description: "Participant leaves an event (sets left_at). Access: OWN"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: OWN
+      x-permissions: [OWN]
       security:
         - sessionCookie: []
       parameters:
@@ -692,7 +808,7 @@ paths:
       summary: "R304: My participations (view)"
       description: "List of events I’m participating in. Access: USR"
       tags: ["M03: Participation (Applications & Invitations)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       responses:
@@ -707,7 +823,7 @@ paths:
       summary: "R401: List comments (AJAX)"
       description: "JSON comments for event. Access: PUB"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -726,7 +842,7 @@ paths:
       summary: "R402: Create comment (action)"
       description: "Participant posts a comment (activity window rules apply). Access: USR"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       parameters:
@@ -750,7 +866,7 @@ paths:
                 success: { value: "/events/{eventId}" }
                 error:   { value: "/events/{eventId}" }
         "401": { description: "Unauthorized" }
-        "403": { description: "Activity window closed" }
+        "403": { description: "Forbidden (not participant or activity window closed)" }
         "422":
           description: "Validation error"
           content:
@@ -763,7 +879,7 @@ paths:
       summary: "R403: Delete own comment (action)"
       description: "Soft-delete own comment. Access: OWN"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: OWN
+      x-permissions: [OWN]
       security:
         - sessionCookie: []
       parameters:
@@ -783,7 +899,7 @@ paths:
       summary: "R405: Vote on comment (action)"
       description: "Cast or replace a vote on a comment. Access: USR"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       parameters:
@@ -802,7 +918,7 @@ paths:
               schema: { type: string }
               example: "/events/{eventId}"
         "401": { description: "Unauthorized" }
-        "403": { description: "Activity window closed" }
+        "403": { description: "Forbidden (not participant or activity window closed)" }
         "422": { description: "Validation error" }
 
   /events/{eventId}/polls:
@@ -811,7 +927,7 @@ paths:
       summary: "R412: List polls (AJAX)"
       description: "List polls for event with options and aggregated counts. Access: PUB"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       parameters:
         - $ref: "#/components/parameters/EventId"
@@ -828,7 +944,7 @@ paths:
       summary: "R406: Create poll (action)"
       description: "Organizer creates a poll for an event. Access: ORG"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -846,7 +962,7 @@ paths:
             Location:
               schema: { type: string }
               example: "/events/{eventId}"
-        "403": { description: "Forbidden (not organizer) or activity window closed" }
+        "403": { description: "Forbidden (not organizer or not participant, or activity window closed)" }
         "422": { description: "Validation error" }
 
   /polls/{pollId}/options:
@@ -855,7 +971,7 @@ paths:
       summary: "R407: Add poll option (action)"
       description: "Organizer adds an option to a poll. Access: ORG"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: ORG
+      x-permissions: [ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -882,7 +998,7 @@ paths:
       summary: "R408: Upload event file (action)"
       description: "Participant uploads a file related to event. Access: USR"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       parameters:
@@ -901,14 +1017,14 @@ paths:
               schema: { type: string }
               example: "/events/{eventId}"
         "401": { description: "Unauthorized" }
-        "403": { description: "Activity window closed" }
+        "403": { description: "Forbidden (not participant or activity window closed)" }
         "422": { description: "Validation error" }
     get:
       operationId: R414
       summary: "R414: List event uploads (AJAX)"
       description: "List uploads for an event. Access: USR (participant) or ORG"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR, ORG]
       security:
         - sessionCookie: []
       parameters:
@@ -929,7 +1045,7 @@ paths:
       summary: "R415: Get upload metadata (AJAX)"
       description: "Retrieve metadata for a single upload (download separate). Access: OWN or ORG or ADM"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: OWN
+      x-permissions: [OWN, ORG, ADM]
       security:
         - sessionCookie: []
       parameters:
@@ -947,7 +1063,7 @@ paths:
       summary: "R416: Delete upload (action)"
       description: "Delete an upload. Access: OWN or ORG or ADM"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: OWN
+      x-permissions: [OWN, ORG, ADM]
       security:
         - sessionCookie: []
       parameters:
@@ -963,7 +1079,7 @@ paths:
       summary: "R404: Vote in poll (action)"
       description: "Participant votes/changes vote in poll (activity window applies). Access: USR"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       parameters:
@@ -986,7 +1102,7 @@ paths:
               example: "/events/{eventId}"
         "401": { description: "Unauthorized" }
         "403": { description: "Activity window closed" }
-        "409": { description: "Already voted or invalid option" }
+        "409": { description: "Invalid option or poll not accepting votes" }
         "422":
           description: "Validation error"
           content:
@@ -999,7 +1115,7 @@ paths:
       summary: "R413: Poll details (AJAX)"
       description: "Get poll with options and aggregated vote counts. Access: PUB"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       parameters:
         - $ref: "#/components/parameters/PollId"
@@ -1020,7 +1136,7 @@ paths:
       summary: "R208: Create report"
       description: "User reports an event for review. Access: USR"
       tags: ["M05: Admin & Static"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       parameters:
@@ -1045,7 +1161,7 @@ paths:
       summary: "R511: List reports (admin)"
       description: "List reports for an event (moderation queue). Access: ADM"
       tags: ["M05: Admin & Static"]
-      x-permissions: ADM
+      x-permissions: [ADM]
       security:
         - sessionCookie: []
       parameters:
@@ -1067,7 +1183,7 @@ paths:
       summary: "R503: Resolve report (admin)"
       description: "Admin marks a report as resolved or takes action. Access: ADM"
       tags: ["M05: Admin & Static"]
-      x-permissions: ADM
+      x-permissions: [ADM]
       security:
         - sessionCookie: []
       parameters:
@@ -1093,7 +1209,7 @@ paths:
       summary: "R508: Admin event action (moderation)"
       description: "Admin performs moderation action on event (e.g., suspend, feature). Access: ADM"
       tags: ["M05: Admin & Static"]
-      x-permissions: ADM
+      x-permissions: [ADM]
       security:
         - sessionCookie: []
       parameters:
@@ -1115,7 +1231,7 @@ paths:
       summary: "R509: Admin user action (moderation)"
       description: "Admin performs moderation action on user (e.g., ban, reinstate). Access: ADM"
       tags: ["M05: Admin & Static"]
-      x-permissions: ADM
+      x-permissions: [ADM]
       security:
         - sessionCookie: []
       parameters:
@@ -1137,7 +1253,7 @@ paths:
       summary: "R409: List my notifications (AJAX)"
       description: "List current user's notifications in JSON. Access: USR"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       responses:
@@ -1153,7 +1269,7 @@ paths:
       summary: "R410: Mark all my notifications read"
       description: "Mark all notifications as read. Access: USR"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: USR
+      x-permissions: [USR]
       security:
         - sessionCookie: []
       responses:
@@ -1165,7 +1281,7 @@ paths:
       summary: "R411: Mark notification read"
       description: "Mark one notification as read. Access: OWN"
       tags: ["M04: Interactions (Comments & Polls)"]
-      x-permissions: OWN
+      x-permissions: [OWN]
       security:
         - sessionCookie: []
       parameters:
@@ -1178,7 +1294,7 @@ paths:
       summary: "R501: Admin dashboard"
       description: "Admin entry page. Access: ADM"
       tags: ["M05: Admin & Static"]
-      x-permissions: ADM
+      x-permissions: [ADM]
       security:
         - sessionCookie: []
       responses:
@@ -1191,11 +1307,23 @@ paths:
       summary: "R502: About"
       description: "Static content. Access: PUB"
       tags: ["M05: Admin & Static"]
-      x-permissions: PUB
+      x-permissions: [PUB]
       security: []
       responses:
         "200": { description: "OK. HTML page." }
         "404": { description: "Not found" }
+
+  /:
+    get:
+      operationId: R200
+      summary: "R200: Home page"
+      description: "Landing page showing highlighted/upcoming public events. Access: PUB."
+      tags: ["M02: Events"]
+      x-permissions: [PUB]
+      security: []
+      responses:
+        "200":
+          description: "OK. HTML home page."
 
   
 
@@ -1280,6 +1408,7 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
+        role: { type: string, enum: [USR, ADM] }
 
 
     EventSummary:
@@ -1317,7 +1446,11 @@ components:
           type: integer
           minimum: 1
           description: "Maximum number of participants"
-      required: [title, start_at, venue, capacity] 
+        visibility:
+          type: string
+          enum: [public, private]
+          description: "Event visibility (public or private)"
+      required: [title, start_at, venue, capacity, visibility]
 
     # Form to update an existing event (used in POST/PATCH /events/{eventId})
     EventUpdateForm:
@@ -1334,7 +1467,10 @@ components:
         venue: { type: string }
         capacity:
           type: integer
-          minimum: 1  
+          minimum: 1
+        visibility:
+          type: string
+          enum: [public, private]
 
     Comment:
       type: object
@@ -1352,11 +1488,39 @@ components:
         message: { type: string }
         createdAt: { type: string, format: date-time }
         readAt: { type: string, format: date-time, nullable: true }
+        eventId: { type: integer, nullable: true }
+        invitationId: { type: integer, nullable: true }
 
     Error:
       type: object
       properties:
         message: { type: string }
+
+    ProfileUpdateForm:
+      type: object
+      properties:
+        name: { type: string }
+        bio: { type: string }
+      required: [name]
+
+    ProfilePictureForm:
+      type: object
+      properties:
+        picture: { type: string, format: binary }
+      required: [picture]
+
+    PasswordForgotForm:
+      type: object
+      properties:
+        email: { type: string, format: email }
+      required: [email]
+
+    PasswordResetForm:
+      type: object
+      properties:
+        token: { type: string }
+        password: { type: string, minLength: 8 }
+      required: [token, password]
 
     Application:
       type: object
@@ -1364,7 +1528,7 @@ components:
         id: { type: integer }
         eventId: { type: integer }
         applicant: { $ref: "#/components/schemas/User" }
-        status: { type: string, enum: [pending, approved, declined] }
+        status: { type: string, enum: [pending, approved, declined, canceled] }
         createdAt: { type: string, format: date-time }
         decidedAt: { type: string, format: date-time, nullable: true }
 
@@ -1374,7 +1538,7 @@ components:
         id: { type: integer }
         eventId: { type: integer }
         invitee: { $ref: "#/components/schemas/User" }
-        status: { type: string, enum: [pending, accepted, declined, revoked] }
+        status: { type: string, enum: [pending, accepted, declined, canceled] }
         createdAt: { type: string, format: date-time }
         respondedAt: { type: string, format: date-time, nullable: true }
 
@@ -1385,7 +1549,7 @@ components:
         eventId: { type: integer }
         reporter: { $ref: "#/components/schemas/User" }
         reason: { type: string }
-        status: { type: string, enum: [open, resolved] }
+        status: { type: string, enum: [open, resolved, dismissed] }
         createdAt: { type: string, format: date-time }
         resolvedAt: { type: string, format: date-time, nullable: true }
 
