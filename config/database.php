@@ -95,6 +95,8 @@ return [
             'prefix_indexes' => true,
             'search_path' => env('DB_SCHEMA', 'public'),
             'sslmode' => 'prefer',
+            'search_path' => env('DB_SCHEMA_SEARCH_PATH', 'lbaw2536,public'),
+
         ],
 
         'sqlsrv' => [
