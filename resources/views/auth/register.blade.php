@@ -17,10 +17,29 @@
         {{--Center all header elements (icon, title, subtitle)--}}
         <div class="text-center">
 
-            <div class="mx-auto h-16 w-16 bg-indigo-600 rounded-full flex items-center justify-center mb-4">
-                {{--Purple circle with an "add user" icon inside--}}
-                <i class="fas fa-user-plus text-white text-2xl"></i>
-            </div>
+    <label for="location">Location</label>
+    <input
+        id="location"
+        type="text"
+        name="location"
+        value="{{ old('location') }}"
+        autocomplete="location"
+    >
+    @error('location')
+      <span id="location-error" class="error" role="alert">{{ $message }}</span>
+    @enderror
+
+    <label for="password">Password</label>
+    <input
+        id="password"
+        type="password"
+        name="password"
+        required
+        autocomplete="new-password"
+    >
+    @error('password')
+      <span id="password-error" class="error" role="alert">{{ $message }}</span>
+    @enderror
 
             {{--Main heading for the page--}}
             <h2 class="text-3xl font-bold text-gray-900">Join EventSquare</h2>

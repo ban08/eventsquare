@@ -60,6 +60,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+
+  
     /**
      * The attributes that should be cast to a specific type.
      * Here we tell Laravel to always hash the password_hash field
@@ -67,11 +69,17 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            // Add casts here if needed (e.g. dates).
-        ];
+    //protected function casts(): array
+    //{
+    //    return [
+    //        'email_verified_at' => 'datetime',
+    //        // Ensures password is always hashed automatically when set.
+    //        'password' => 'hashed',
+    //    ];
+    //}   
+
+    public function getAuthPassword() {
+        return $this->password_hash;   
     }
 
     public function getRouteKeyName()
