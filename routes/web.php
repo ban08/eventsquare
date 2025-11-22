@@ -2,33 +2,20 @@
 
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\CardController;
-use App\Http\Controllers\ItemController;
+use App\Http\Controllers\EventController;
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LogoutController;
 
-// Home
-Route::redirect('/', '/login');
+// Public event browsing
+Route::controller(EventController::class)->group(function () {
+    Route::get('/', 'home')->name('home'); // R200
 
-// Cards (authentication required)
-Route::middleware('auth')->controller(CardController::class)->group(function () {
-    Route::get('/cards', 'index')->name('cards.index');
-    Route::get('/cards/{card}', 'show')->name('cards.show');
-});
+    Route::get('/events', 'index')->name('events.index'); // R201
+    Route::get('/events/{event}', 'show')->name('events.show'); // R203
 
-
-// API (authentication required)
-Route::middleware('auth')->controller(CardController::class)->group(function () {
-    Route::post('/api/cards', 'store');              // create card
-    Route::delete('/api/cards/{card}', 'destroy');   // delete card
-});
-
-Route::middleware('auth')->controller(ItemController::class)->group(function () {
-    Route::post('/api/cards/{card}/items', 'store'); // add item to card
-    Route::patch('/api/items/{item}', 'update');     // update item
-    Route::delete('/api/items/{item}', 'destroy');   // delete item
+    Route::get('/api/events', 'searchApi')->name('api.events.search'); // R206
 });
 
 
