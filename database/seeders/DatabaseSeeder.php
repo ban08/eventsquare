@@ -26,6 +26,13 @@ class DatabaseSeeder extends Seeder
 
         DB::unprepared($sql);
 
+        DB::statement("
+            SELECT setval(
+                pg_get_serial_sequence('\"user\"', 'id_user'),
+                (SELECT COALESCE(MAX(id_user), 1) FROM \"user\")
+            )
+        ");
+
         $this->command?->info('Database seeded using EventSquare schema: ' . ($schema ?? 'lbaw2536'));
     }
 }

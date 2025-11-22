@@ -1,13 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\EventController;
-
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\Auth\LogoutController;
-
+ 
 // Public event browsing
 Route::controller(EventController::class)->group(function () {
     Route::get('/', 'home')->name('home'); // R200
@@ -18,18 +14,20 @@ Route::controller(EventController::class)->group(function () {
     Route::get('/api/events', 'searchApi')->name('api.events.search'); // R206
 });
 
+// Authentication routes (AuthController version from main)
+Route::controller(AuthController::class)->group(function () {
+    // Show login form
+    Route::get('/login', 'showLogin')->name('login');
 
-// Authentication
-Route::controller(LoginController::class)->group(function () {
-    Route::get('/login', 'showLoginForm')->name('login');
-    Route::post('/login', 'authenticate');
-});
+    // Handle login form submission
+    Route::post('/login', 'login');
 
-Route::controller(LogoutController::class)->group(function () {
-    Route::get('/logout', 'logout')->name('logout');
-});
+    // Log the user out
+    Route::post('/logout', 'logout')->name('logout');
 
-Route::controller(RegisterController::class)->group(function () {
-    Route::get('/register', 'showRegistrationForm')->name('register');
+    // Show registration form
+    Route::get('/register', 'showRegister')->name('register');
+
+    // Handle registration form submission
     Route::post('/register', 'register');
 });

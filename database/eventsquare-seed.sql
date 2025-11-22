@@ -278,21 +278,21 @@ USING btree (id_event, id_user);
 INSERT INTO "user" (id_user, email, name, location, password_hash, status, created_at, updated_at)
 OVERRIDING SYSTEM VALUE
 VALUES
-(1, 'joao.silva@email.com', 'João Silva', 'Porto', 'hash123', 'active', '2025-09-01', NULL),
-(2, 'ana.santos@email.com', 'Ana Santos', 'Lisboa', 'hash456', 'active', '2025-09-02', '2025-09-15'),
-(3, 'carlos.mendes@email.com', 'Carlos Mendes', 'Coimbra', 'hash789', 'active', '2025-09-03', NULL),
-(4, 'maria.rocha@email.com', 'Maria Rocha', 'Braga', 'hash321', 'active', '2025-09-04', '2025-09-20'),
-(5, 'pedro.costa@email.com', 'Pedro Costa', 'Aveiro', 'hash654', 'active', '2025-09-05', NULL),
-(6, 'isabel.martins@email.com', 'Isabel Martins', 'Faro', 'hash987', 'active', '2025-09-06', '2025-09-25'),
-(7, 'luis.gomes@email.com', 'Luís Gomes', 'Leiria', 'hash147', 'active', '2025-09-07', '2025-09-30'),
-(8, 'sofia.almeida@email.com', 'Sofia Almeida', 'Setúbal', 'hash258', 'active', '2025-09-08', NULL),
-(9, 'ricardo.pereira@email.com', 'Ricardo Pereira', 'Viseu', 'hash369', 'active', '2025-09-09', NULL),
-(10, 'catarina.fernandes@email.com', 'Catarina Fernandes', 'Évora', 'hash741', 'active', '2025-09-10', '2025-09-28'),
-(11, 'tiago.cruz@email.com', 'Tiago Cruz', 'Guarda', 'hash852', 'active', '2025-09-11', NULL),
-(12, 'leonor.guerra@email.com', 'Leonor Guerra', 'Portimão', 'hash963', 'active', '2025-09-12', NULL),
-(13, 'bruno.nogueira@email.com', 'Bruno Nogueira', 'Viana do Castelo', 'hash159', 'active', '2025-09-13', NULL),
-(14, 'inês.barbosa@email.com', 'Inês Barbosa', 'Funchal', 'hash357', 'active', '2025-09-14', NULL),
-(15, 'diogo.ramos@email.com', 'Diogo Ramos', 'Ponta Delgada', 'hash753', 'active', '2025-09-15', NULL);
+(1, 'joao.silva@email.com', 'João Silva', 'Porto', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-01', NULL),
+(2, 'ana.santos@email.com', 'Ana Santos', 'Lisboa', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-02', '2025-09-15'),
+(3, 'carlos.mendes@email.com', 'Carlos Mendes', 'Coimbra', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-03', NULL),
+(4, 'maria.rocha@email.com', 'Maria Rocha', 'Braga', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-04', '2025-09-20'),
+(5, 'pedro.costa@email.com', 'Pedro Costa', 'Aveiro', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-05', NULL),
+(6, 'isabel.martins@email.com', 'Isabel Martins', 'Faro', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-06', '2025-09-25'),
+(7, 'luis.gomes@email.com', 'Luís Gomes', 'Leiria', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-07', '2025-09-30'),
+(8, 'sofia.almeida@email.com', 'Sofia Almeida', 'Setúbal', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-08', NULL),
+(9, 'ricardo.pereira@email.com', 'Ricardo Pereira', 'Viseu', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-09', NULL),
+(10, 'catarina.fernandes@email.com', 'Catarina Fernandes', 'Évora', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-10', '2025-09-28'),
+(11, 'tiago.cruz@email.com', 'Tiago Cruz', 'Guarda', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-11', NULL),
+(12, 'leonor.guerra@email.com', 'Leonor Guerra', 'Portimão', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-12', NULL),
+(13, 'bruno.nogueira@email.com', 'Bruno Nogueira', 'Viana do Castelo', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-13', NULL),
+(14, 'inês.barbosa@email.com', 'Inês Barbosa', 'Funchal', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-14', NULL),
+(15, 'diogo.ramos@email.com', 'Diogo Ramos', 'Ponta Delgada', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-15', NULL);
 
 --R02 (admin)
 INSERT INTO admin (id_admin, email, name, password_hash, status, created_at, updated_at)
