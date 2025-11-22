@@ -11,12 +11,9 @@ info:
     - Some endpoints may later get AJAX/JSON variants.
   version: 1.0.0
 
-# Where the web app will run.
 servers:
-    # Local Laravel dev server
   - url: http://localhost:8000/api
     description: Development server
-    # LBAW production host
   - url: https://lbaw.fe.up.pt
     description: Production host
 
@@ -28,7 +25,6 @@ x-permissions:
   ADM: "Administrators"
 
 tags:
-
   - name: "M01: Authentication & Profile"
     description: "Login, logout, registration, and viewing the current user's profile."
   - name: "M02: Events"
@@ -42,32 +38,24 @@ tags:
 
 components:
   securitySchemes:
-    # Laravel's session cookie for authentication.
     sessionCookie:
       type: apiKey
       in: cookie
       name: laravel_session
       description: "Session cookie set by Laravel after login."
-
   parameters:
-    # Reusable path parameter for event id
     EventId:
       in: path
       name: eventId
       required: true
       schema:
         type: integer
-
   schemas:
-    # These schemas describe the SHAPE of data sent by forms or returned as JSON.
-    # Avoid repeating the same field descriptions everywhere.
     User:
       type: object
       properties:
         id: { type: integer }
         name: { type: string }
-
-    # Form to create an event (used in POST /events)
     EventCreateForm:
       type: object
       properties:
@@ -93,9 +81,6 @@ components:
           minimum: 1
           description: "Maximum number of participants"
       required: [title, start_at, venue, capacity]
-
-
-    # Form to update an existing event (used in POST/PATCH /events/{eventId})
     EventUpdateForm:
       type: object
       properties:
@@ -111,97 +96,16 @@ components:
         capacity:
           type: integer
           minimum: 1
-
-
-    # Generic JSON error (mainly for AJAX / future extensions)
     Error:
       type: object
       properties:
         message:
           type: string
 
-
-
 paths:
   ####################################################################
-  # M01 – Authentication & Profile
+  # M01 – Authentication & Profile (VT01 only: REGISTER)
   ####################################################################
-  /login:
-    # VIEW endpoint: show login form (HTML page)
-    get:
-      operationId: R101
-      summary: "R101: Login Form"
-      description: "Show the login form. Access: PUB."
-      tags: ["M01: Authentication & Profile"]
-      x-permissions: [PUB]                       # anyone can see the login page
-      security: []
-      responses:
-        "200":
-          description: "OK. Returns HTML for the login page."
-        "400":
-          description: "Bad request."
-
-    # ACTION endpoint: process login, then redirect
-    post:
-      operationId: R102
-      summary: "R102: Login Action"
-      description: |
-        Process login credentials. On success, creates a session and redirects.
-        Access: PUB.
-      tags: ["M01: Authentication & Profile"]
-      x-permissions: [PUB]
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-              required: [email, password]
-      responses:
-        "302":
-          description: "Redirect after login."
-          headers:
-            Location:
-              schema:
-                type: string
-              examples:
-                success:
-                  value: "/login"       # go to login page on success
-                error:
-                  value: "/login"    # back to login on error
-        "401":
-          description: "Unauthorized (wrong email/password)."
-        "422":
-          description: "Validation error (e.g., missing fields)."
-
-  /logout:
-    # ACTION endpoint: logout current user and redirect
-    post:
-      operationId: R103
-      summary: "R103: Logout Action"
-      description: |
-        Logout current user (destroy session) and redirect to login.
-      tags: ["M01: Authentication & Profile"]
-      x-permissions: [USR, ADM]       # must be logged in
-      security:
-        - sessionCookie: []           # requires valid session cookie
-      responses:
-        "302":
-          description: "Redirect after logout."
-          headers:
-            Location:
-              schema:
-                type: string
-              example: "/login"
-        "401":
-          description: "Unauthorized (not logged in)."
 
   /register:
     # VIEW endpoint: show registration form (HTML)
@@ -212,7 +116,7 @@ paths:
         Show registration form. Access: PUB.
       tags: ["M01: Authentication & Profile"]
       x-permissions: [PUB]
-      security: []                    # public page
+      security: []
       responses:
         "200":
           description: "OK. Returns HTML with the sign-up form."
@@ -225,10 +129,10 @@ paths:
       summary: "R105: Register Action"
       description: |
         Process registration form and create a new user account.
-        On success, usually logs in the user and redirects to login page.
+        On success, usually logs in the user and redirects to another page.
       tags: ["M01: Authentication & Profile"]
       x-permissions: [PUB]
-      security: []                    # no cookie yet
+      security: []
       requestBody:
         required: true
         content:
@@ -251,144 +155,8 @@ paths:
                 type: string
               examples:
                 success:
-                  value: "/login"         # go to login page
+                  value: "/login"      # or some dashboard page if you prefer
                 failure:
-                  value: "/register"   # show form again with errors
+                  value: "/register"
         "422":
           description: "Validation error."
-
-  ####################################################################
-  # M02 – Events
-  ####################################################################
-
-  /events/create:
-    # VIEW endpoint: show create event form (HTML)
-    get:
-      operationId: R206
-      summary: "R206: Create event form"
-      description: |
-        Show the form to create a new event.
-        Access: USR.
-      tags: ["M02: Events"]
-      x-permissions: [USR]
-      security:
-        - sessionCookie: []
-      responses:
-        "200":
-          description: "OK. HTML form to create an event."
-        "401":
-          description: "Unauthorized (not logged in)."
-
-    # ACTION endpoint: create a new event (OR01)
-    post:
-      operationId: R207
-      summary: "R207: Create event (action)"
-      description: |
-        Process the create-event form and create a new event.
-        The current user becomes the organizer.
-        Access: USR.
-      tags: ["M02: Events"]
-      x-permissions: [USR]
-      security:
-        - sessionCookie: []
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: "#/components/schemas/EventCreateForm"
-      responses:
-        "302":
-          description: "Redirect to created event page."
-          headers:
-            Location:
-              schema:
-                type: string
-              example: "/events/{eventId}"
-        "401":
-          description: "Unauthorized (not logged in)."
-        "422":
-          description: "Validation error."
-
-  /events/{eventId}:
-    # VIEW endpoint: event details page (HTML)
-    get:
-      operationId: R203
-      summary: "R203: Event details (view)"
-      description: |
-        Show the event details page, including description, date, venue, etc.
-        Access: PUB (for public events).
-      tags: ["M02: Events"]
-      x-permissions: [PUB]
-      security: []
-      parameters:
-        - $ref: "#/components/parameters/EventId"
-      responses:
-        "200":
-          description: "OK. HTML page for a single event."
-        "404":
-          description: "Event not found."
-
-    # ACTION endpoint: update event (OR02)
-    post:
-      operationId: R204
-      summary: "R204: Edit event (action)"
-      description: |
-        Process the edit-event form and update the event.
-        Only the organizer is allowed.
-        Access: ORG.
-      tags: ["M02: Events"]
-      x-permissions: [ORG]
-      security:
-        - sessionCookie: []
-      parameters:
-        - $ref: "#/components/parameters/EventId"
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: "#/components/schemas/EventUpdateForm"
-      responses:
-        "302":
-          description: "Redirect back to the event page."
-          headers:
-            Location:
-              schema:
-                type: string
-              example: "/events/{eventId}"
-        "401":
-          description: "Unauthorized (not logged in)."
-        "403":
-          description: "Forbidden (current user is not organizer)."
-        "422":
-          description: "Validation error."
-
-    # ACTION endpoint: delete event (OR08)
-    delete:
-      operationId: R205
-      summary: "R205: Delete event (action)"
-      description: |
-        Delete (or cancel) an event.
-        Only the organizer can perform this action.
-        Access: ORG.
-      tags: ["M02: Events"]
-      x-permissions: [ORG]
-      security:
-        - sessionCookie: []
-      parameters:
-        - $ref: "#/components/parameters/EventId"
-      responses:
-        "302":
-          description: "Redirect to the events list after deletion."
-          headers:
-            Location:
-              schema:
-                type: string
-              example: "/events"
-        "401":
-          description: "Unauthorized (not logged in)."
-        "403":
-          description: "Forbidden (current user is not organizer)."
-        "404":
-          description: "Event not found."

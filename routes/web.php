@@ -3,8 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 
-// Home - redirect to login page
-Route::redirect('/', '/login');
+Route::redirect('/', '/register');
 
 /*
 use App\Http\Controllers\CardController;
@@ -51,15 +50,6 @@ Route::controller(RegisterController::class)->group(function () {
 
 // Authentication routes
 Route::controller(AuthController::class)->group(function () {
-    // Show login form
-    Route::get('/login', 'showLogin')->name('login');
-
-    // Handle login form submission
-    Route::post('/login', 'login');
-
-    // Log the user out
-    Route::post('/logout', 'logout')->name('logout');
-
     // Show registration form
     Route::get('/register', 'showRegister')->name('register');
 

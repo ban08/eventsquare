@@ -214,13 +214,6 @@
                         <span class="px-2 bg-white text-gray-500">Already have an account?</span>
                     </div>
                 </div>
-
-                {{-- Link to the login page --}}
-                <div class="mt-6 text-center">
-                    <a href="{{ route('login') }}" class="font-medium text-purple-600 hover:text-purple-500 transition-colors">
-                        Sign in here
-                    </a>
-                </div>
             </div>
         </div>
     </div>
