@@ -60,18 +60,31 @@
                 </a>
 
                 {{--MAIN NAVIGATION (center)--}}
-                {{--Hidden on small screens (hidden),
-                    shown from medium screens up (md:flex).--}}
-                <nav class="hidden md:flex items-center space-x-8">
-
-                </nav>
 
                 {{--USER MENU (right side)--}}
                 <div class="flex items-center space-x-4">
+
+                    {{-- @guest means: only show this block when the user is NOT logged in.
+                        So these are the "Sign In" and "Sign Up" links for visitors.--}}
+                    @guest
+                    {{-- Link to the login page --}}
+                    <a href="{{ url('/login') }}" class="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        Sign In
+                    </a>
+
                     {{-- Link to the registration page --}}
                     <a href="{{ url('/register') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
                         Sign Up
                     </a>
+
+                    {{-- @else is the opposite of @guest (i.e., the user IS logged in).
+                        So this block shows the welcome text and logout button.--}}
+                    @else
+                    <div class="flex items-center space-x-3">
+                        {{-- Show the logged-in user’s name --}}
+                        <span class="text-gray-700 text-sm">Welcome, {{ Auth::user()->name }}</span>
+                    </div>
+                    @endguest
                 </div>
             </div>
         </div>

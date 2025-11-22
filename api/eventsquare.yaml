@@ -106,6 +106,60 @@ paths:
   ####################################################################
   # M01 – Authentication & Profile (VT01 only: REGISTER)
   ####################################################################
+  /login:
+    # VIEW endpoint: show login form (HTML page)
+    get:
+      operationId: R101
+      summary: "R101: Login Form"
+      description: "Show the login form. Access: PUB."
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [PUB]                       # anyone can see the login page
+      security: []
+      responses:
+        "200":
+          description: "OK. Returns HTML for the login page."
+        "400":
+          description: "Bad request."
+
+    # ACTION endpoint: process login, then redirect
+    post:
+      operationId: R102
+      summary: "R102: Login Action"
+      description: |
+        Process login credentials. On success, creates a session and redirects.
+        Access: PUB.
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [PUB]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required: [email, password]
+      responses:
+        "302":
+          description: "Redirect after login."
+          headers:
+            Location:
+              schema:
+                type: string
+              examples:
+                success:
+                  value: "/login"       # go to login page on success
+                error:
+                  value: "/login"    # back to login on error
+        "401":
+          description: "Unauthorized (wrong email/password)."
+        "422":
+          description: "Validation error (e.g., missing fields)."
 
   /register:
     # VIEW endpoint: show registration form (HTML)
