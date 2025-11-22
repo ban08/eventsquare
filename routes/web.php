@@ -1,22 +1,23 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\AuthController;
 
+// Home - redirect to login page
+Route::redirect('/', '/login');
+
+/*
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\ItemController;
-
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LogoutController;
-
-// Home
-Route::redirect('/', '/login');
 
 // Cards (authentication required)
 Route::middleware('auth')->controller(CardController::class)->group(function () {
     Route::get('/cards', 'index')->name('cards.index');
     Route::get('/cards/{card}', 'show')->name('cards.show');
-});
+}); 
 
 
 // API (authentication required)
@@ -32,7 +33,7 @@ Route::middleware('auth')->controller(ItemController::class)->group(function () 
 });
 
 
-// Authentication
+// Authentication routes
 Route::controller(LoginController::class)->group(function () {
     Route::get('/login', 'showLoginForm')->name('login');
     Route::post('/login', 'authenticate');
@@ -44,5 +45,24 @@ Route::controller(LogoutController::class)->group(function () {
 
 Route::controller(RegisterController::class)->group(function () {
     Route::get('/register', 'showRegistrationForm')->name('register');
+    Route::post('/register', 'register');
+});
+ */
+
+// Authentication routes
+Route::controller(AuthController::class)->group(function () {
+    // Show login form
+    Route::get('/login', 'showLogin')->name('login');
+
+    // Handle login form submission
+    Route::post('/login', 'login');
+
+    // Log the user out
+    Route::post('/logout', 'logout')->name('logout');
+
+    // Show registration form
+    Route::get('/register', 'showRegister')->name('register');
+
+    // Handle registration form submission
     Route::post('/register', 'register');
 });
