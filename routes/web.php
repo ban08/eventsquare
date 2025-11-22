@@ -57,6 +57,9 @@ Route::controller(AuthController::class)->group(function () {
     // Handle login form submission
     Route::post('/login', 'login');
 
+    // Log the user out
+    Route::post('/logout', 'logout')->name('logout');
+
     // Show registration form
     Route::get('/register', 'showRegister')->name('register');
 

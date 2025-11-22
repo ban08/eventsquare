@@ -149,4 +149,24 @@ class AuthController extends Controller
             'email' => ['The provided credentials do not match our records.'],
         ]);
     }
+
+
+    /**
+     * Handle a logout request (when user clicks Logout).
+     */
+    public function logout(Request $request)
+    {
+        // 1. Log the user out.
+        Auth::logout();
+
+        // 2. Clear all session data.
+        $request->session()->invalidate();
+
+        // 3. Regenerate the CSRF token for security.
+        $request->session()->regenerateToken();
+
+        // 4. Redirect the logged out user back to the login page.
+        return redirect()->route('login')
+        ->withSuccess('You have logged out successfully!');
+    }
 }

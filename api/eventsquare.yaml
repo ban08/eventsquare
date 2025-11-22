@@ -161,6 +161,28 @@ paths:
         "422":
           description: "Validation error (e.g., missing fields)."
 
+  /logout:
+    # ACTION endpoint: logout current user and redirect
+    post:
+      operationId: R103
+      summary: "R103: Logout Action"
+      description: |
+        Logout current user (destroy session) and redirect to login.
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [USR, ADM]       # must be logged in
+      security:
+        - sessionCookie: []           # requires valid session cookie
+      responses:
+        "302":
+          description: "Redirect after logout."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/login"
+        "401":
+          description: "Unauthorized (not logged in)."
+
   /register:
     # VIEW endpoint: show registration form (HTML)
     get:

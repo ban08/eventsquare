@@ -60,6 +60,20 @@
                 </a>
 
                 {{--MAIN NAVIGATION (center)--}}
+                {{--Hidden on small screens (hidden),
+                    shown from medium screens up (md:flex).--}}
+                <!--<nav class="hidden md:flex items-center space-x-8">
+                    {{--@auth means: only show this block when the user is logged in.
+                        If not logged in, this part is skipped.--}}
+                    @auth
+                    {{-- Link to the "Create Event" page.
+                        Right now, this uses a plain URL (/events/create).
+                        You can later change it to route('events.create') once you have that route.--}}
+                    <a href="{{ url('/events/create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Create Event
+                    </a>
+                    @endauth
+                </nav>-->
 
                 {{--USER MENU (right side)--}}
                 <div class="flex items-center space-x-4">
@@ -83,6 +97,16 @@
                     <div class="flex items-center space-x-3">
                         {{-- Show the logged-in user’s name --}}
                         <span class="text-gray-700 text-sm">Welcome, {{ Auth::user()->name }}</span>
+
+                        {{--Logout form.
+                            We use a <form> with POST because Laravel's logout route 
+                            is usually defined as POST and needs a CSRF token.--}}
+                        <form action="{{ url('/logout') }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
+                                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                            </button>
+                        </form>
                     </div>
                     @endguest
                 </div>
