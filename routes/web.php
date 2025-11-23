@@ -18,6 +18,10 @@ Route::controller(AuthController::class)->group(function () {
 
     // Show registration form
     Route::get('/register', 'showRegister')->name('register');
+use App\Http\Controllers\ProfileController;
+
+// Home
+Route::redirect('/', '/login');
 
     // Handle registration form submission
     Route::post('/register', 'register');
@@ -67,4 +71,7 @@ Route::controller(EventController::class)->group(function () {
     // Delete an event (OR08) - only for authenticated users
     Route::delete('/events/{event}', 'destroy')->name('events.destroy')->middleware('auth');    
 
+// Profile
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show'); // RU01
 });
