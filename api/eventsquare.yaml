@@ -343,6 +343,35 @@ paths:
         "422":
           description: "Validation error."
 
+    # ACTION endpoint: delete event (OR08)
+    delete:
+      operationId: R205
+      summary: "R205: Delete event (action)"
+      description: |
+        Delete an event.
+        Only the organizer can perform this action.
+        Access: ORG.
+      tags: ["M02: Events"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "302":
+          description: "Redirect to the events list after deletion."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/events"
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (current user is not organizer)."
+        "404":
+          description: "Event not found."
+
  ####################################################################
   # M05 – Admin: User Administration (AD07)
   ####################################################################
@@ -518,3 +547,4 @@ paths:
           description: "Forbidden (not admin)."
         "404":
           description: "User not found."
+    

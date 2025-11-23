@@ -195,7 +195,7 @@
                                     Tags (Optional)
                                 </label>
                                 {{-- Scrollable box of tags --}}
-                                <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 border border-gray-200 rounded-lg">
+                                <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-white">
                                     @foreach($tags as $tag)
                                         <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
                                             <input

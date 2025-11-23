@@ -63,4 +63,8 @@ Route::controller(EventController::class)->group(function () {
 
     // Handle edit form submission (update existing event) (OR02)
     Route::put('/events/{event}', 'update')->name('events.update')->middleware('auth');
+
+    // Delete an event (OR08) - only for authenticated users
+    Route::delete('/events/{event}', 'destroy')->name('events.destroy')->middleware('auth');    
+
 });
