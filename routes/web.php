@@ -71,6 +71,9 @@ Route::controller(EventController::class)->group(function () {
     // Delete an event (OR08) - only for authenticated users
     Route::delete('/events/{event}', 'destroy')->name('events.destroy')->middleware('auth');    
 
+    // Apply to event (RU09)
+    Route::post('/events/{event}/apply', 'apply')->name('events.apply')->middleware('auth');
+
 });
 
 // Profile
