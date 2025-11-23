@@ -255,5 +255,26 @@ class EventController extends Controller
             ->route('events.show', $event->id_event)
             ->with('success', 'Event updated successfully!');
     }
+
+    // Delete an event (OR08).
+    // Only the organizer who created the event can delete it.
+    public function destroy(Event $event)
+    {
+        // If user is not logged in OR is not the organizer, forbid access
+        if (!Auth::check() || Auth::id() !== $event->id_organizer) {
+            abort(403, 'You are not allowed to delete this event.');
+        }
+
+        // Delete the event from the database.
+        // If the database is set up with foreign key cascading,
+        // related rows will be removed automatically.
+        $event->delete();
+
+        // After deleting, send the user back to "My events" page with a success message.
+        return redirect()
+            ->route('events.mine')
+            ->with('success', 'Event deleted successfully!');
+    }
+
     
 }
