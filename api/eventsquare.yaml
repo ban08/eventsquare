@@ -236,3 +236,74 @@ paths:
                   value: "/register"
         "422":
           description: "Validation error."
+
+  ####################################################################
+  # M02 – Events
+  ####################################################################
+  /events/create:
+    # VIEW endpoint: show create event form (HTML)
+    get:
+      operationId: R206
+      summary: "R206: Create event form"
+      description: |
+        Show the form to create a new event.
+        Access: USR.
+      tags: ["M02: Events"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "OK. HTML form to create an event."
+        "401":
+          description: "Unauthorized (not logged in)."
+
+    # ACTION endpoint: create a new event (OR01)
+    post:
+      operationId: R207
+      summary: "R207: Create event (action)"
+      description: |
+        Process the create-event form and create a new event.
+        The current user becomes the organizer.
+        Access: USR.
+      tags: ["M02: Events"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/EventCreateForm"
+      responses:
+        "302":
+          description: "Redirect to created event page."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/events/{eventId}"
+        "401":
+          description: "Unauthorized (not logged in)."
+        "422":
+          description: "Validation error."
+
+  /events/{eventId}:
+    # VIEW endpoint: event details page (HTML)
+    get:
+      operationId: R203
+      summary: "R203: Event details (view)"
+      description: |
+        Show the event details page, including description, date, venue, etc.
+        Access: PUB (for public events).
+      tags: ["M02: Events"]
+      x-permissions: [PUB]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: "OK. HTML page for a single event."
+        "404":
+          description: "Event not found."
