@@ -164,7 +164,8 @@ class EventController extends Controller
     // Display a single event so that people can find it.
     public function show(Event $event)
     {
-        // Show the "show event" view and pass the event to it.
+        // Eager-load invitations + invitee user to avoid N+ queries when listing invitations.
+        $event->load(['invitations.invitee']);
         return view('events.show', compact('event'));
     }
 

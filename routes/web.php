@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\InvitationController;
  
 // Authentication routes (AuthController version from main)
 Route::controller(AuthController::class)->group(function () {
@@ -74,6 +75,14 @@ Route::controller(EventController::class)->group(function () {
     // Apply to event (RU09)
     Route::post('/events/{event}/apply', 'apply')->name('events.apply')->middleware('auth');
 
+});
+
+// Invitations (OR03 invite, RU10 respond)
+Route::middleware('auth')->controller(InvitationController::class)->group(function () {
+    Route::post('/events/{event}/invite', 'invite')->name('invitations.invite'); // OR03
+    Route::post('/invitations/{invitation}/accept', 'accept')->name('invitations.accept'); // RU10
+    Route::post('/invitations/{invitation}/decline', 'decline')->name('invitations.decline'); // RU10
+    Route::get('/my-invitations', 'index')->name('invitations.index'); // RU10 list
 });
 
 // Profile

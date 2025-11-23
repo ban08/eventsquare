@@ -90,14 +90,20 @@
                         So this block shows the welcome text, optional admin link and logout button.--}}
                     @else
                     <div class="flex items-center gap-4 text-sm text-gray-700">
-                        <span class="mr-8 flex items-center gap-2">
+                        @php
+                            // Lightweight pending invitations count (prototype; consider ViewComposer for production)
+                            $pendingInvCount = \App\Models\Invitation::where('id_invitee', Auth::id())
+                                ->where('status','pending')
+                                ->count();
+                        @endphp
+                        <span class="flex items-center gap-2">
                             Welcome,&nbsp;
                             <a
-                                href="#"
-                                onclick="event.preventDefault();"
-                                aria-disabled="true"
-                                class="font-semibold hover:underline cursor-pointer"
-                            > {{ Auth::user()->name }}
+                                href="{{ route('profile.show') }}"
+                                class="font-semibold hover:underline"
+                                title="View profile"
+                            >
+                                {{ Auth::user()->name }}
                             </a>
                             @can('admin')
                             <a href="{{ route('admin.users.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
@@ -114,6 +120,14 @@
                         <a href="{{ url('/events/create') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
                             <i class="fas fa-plus mr-1 text-[11px]"></i>
                             <span>Create event</span>
+                        </a>
+                        <a href="{{ route('invitations.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                            <i class="fas fa-envelope-open-text mr-1 text-[12px] text-indigo-600"></i>
+                            <span class="flex items-center gap-1">Invites
+                                @if($pendingInvCount > 0)
+                                    <span class="text-slate-700 font-semibold text-[10px] leading-none">({{ $pendingInvCount }})</span>
+                                @endif
+                            </span>
                         </a>
 
                         <form action="{{ url('/logout') }}" method="POST" class="inline">

@@ -307,6 +307,101 @@ paths:
           description: "OK. HTML page for a single event."
         "404":
           description: "Event not found."
+
+  ####################################################################
+  # M03 – Participation (Invitations)
+  ####################################################################
+  /events/{eventId}/invite:
+    post:
+      operationId: R301
+      summary: "R301: Invite user to event (OR03)"
+      description: |
+        Organizer invites a user to participate in the event. Creates a new invitation (status=pending).
+        Access: ORG.
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                invitee_id:
+                  type: integer
+                  description: "User ID to invite (must exist and not already invited)."
+              required: [invitee_id]
+      responses:
+        "302":
+          description: "Redirect back to event page with flash message."
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (not organizer)."
+        "422":
+          description: "Validation error (invalid or duplicate invitee)."
+
+  /invitations/{invitationId}/accept:
+    post:
+      operationId: R302
+      summary: "R302: Accept invitation (RU10)"
+      description: |
+        Invitee accepts an invitation. Status becomes 'accepted', responded_at is set. May auto-create participation.
+        Access: USR (invitee only).
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: invitationId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "302":
+          description: "Redirect back with success flash message."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not invitee)."
+        "404":
+          description: "Invitation not found."
+        "409":
+          description: "Already responded."
+
+  /invitations/{invitationId}/decline:
+    post:
+      operationId: R303
+      summary: "R303: Decline invitation (RU10)"
+      description: |
+        Invitee declines an invitation. Status becomes 'declined', responded_at is set.
+        Access: USR (invitee only).
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: invitationId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "302":
+          description: "Redirect back with success flash message."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not invitee)."
+        "404":
+          description: "Invitation not found."
+        "409":
+          description: "Already responded."
   
     # ACTION endpoint: update event (OR02)
     post:
