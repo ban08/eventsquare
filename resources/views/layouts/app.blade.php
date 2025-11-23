@@ -20,45 +20,7 @@
         <script src="{{ asset('js/app.js') }}" defer></script>
         @stack('scripts')
     </head>
-    <body>
-        <main>
-            <header class="app-header">
-            <div class="header-left">
-                <h1>
-                    <a href="{{ route('home') }}" class="header-logo">
-                        EventSquare
-                    </a>
-                </h1>
-            </div>
-
-            <div class="header-right">
-                @auth
-                    <span class="header-username">
-                        Welcome, {{ Auth::user()->name }}
-                    </span>
-
-                    <a class="button button-outline"
-                       href="{{ route('profile.show') }}">
-                        My Profile
-                    </a>
-
-                    <form action="{{ route('logout') }}" method="POST" style="display:inline;">
-                        @csrf
-                        <button class="button">Logout</button>
-                    </form>
-                @endauth
-
-                @guest
-                    <a class="button button-clear" href="{{ route('login') }}">
-                        Sign In
-                    </a>
-                    <a class="button button-outline" href="{{ route('register') }}">
-                        Sign Up
-                    </a>
-                @endguest
-            </div>
-        </header>
-
+ 
     {{--<title> shown in the browser tab.
         @yield('title', 'EventSquare') means:
         - If a child view defines @section('title', 'Something'), use that.
