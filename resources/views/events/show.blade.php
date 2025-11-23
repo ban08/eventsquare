@@ -55,6 +55,26 @@
                         <p class="mt-2 text-base leading-relaxed text-slate-700 max-w-3xl">{{ $event->description }}</p>
                     </div>
 
+                    {{-- Apply to event (RU09) --}}
+                    @auth
+                        @php
+                            $alreadyParticipant = $event->participants->contains(Auth::id());
+                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id());
+                            $isOrganizer = $event->id_organizer == Auth::id();
+                        @endphp
+
+                        @if(!$isOrganizer && !$alreadyParticipant && !$alreadyApplied && !$event->is_full)
+                            <form action="{{ route('events.apply', $event) }}" method="POST" class="mt-8 flex justify-end">
+                                @csrf
+                                <button class="inline-flex items-center gap-2 rounded-full bg-green-600 px-6 py-2 text-base font-semibold text-white shadow-lg hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition">
+                                    <i class="fas fa-user-plus"></i>
+                                    Apply to Join Event
+                                </button>
+                            </form>
+                        @endif
+                    @endauth
+
+
                     {{-- Call to action --}}
                     <div class="mt-10 flex justify-end">
                         <a href="{{ route('events.index') }}" class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-2 text-base font-semibold text-white shadow-lg hover:from-indigo-600 hover:to-purple-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 transition">

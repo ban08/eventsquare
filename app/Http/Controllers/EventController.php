@@ -276,5 +276,42 @@ class EventController extends Controller
             ->with('success', 'Event deleted successfully!');
     }
 
+    public function apply(Event $event)
+    {
+        $user = Auth::user();
+
+        // Cannot apply if event full
+        if ($event->is_full) {
+            return back()->with('error', 'This event is already full.');
+        }
+
+        // Cannot apply twice
+        $alreadyApplied = $event->applications()
+            ->where('id_user', $user->id_user)
+            ->exists();
+
+        if ($alreadyApplied) {
+            return back()->with('error', 'You have already applied to this event.');
+        }
+
+        // Cannot apply if already participant
+        $alreadyParticipant = $event->participants()
+            ->where('id_user', $user->id_user)
+            ->exists();
+
+        if ($alreadyParticipant) {
+            return back()->with('error', 'You are already participating in this event.');
+        }
+
+        // Create new application
+        $event->applications()->create([
+            'id_user' => $user->id_user,
+            'status'   => 'pending',    
+            'created_at' => now()
+        ]);
+
+        return back()->with('success', 'Your request to join this event was submitted!');
+    }
+
     
 }
