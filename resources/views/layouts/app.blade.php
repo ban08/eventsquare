@@ -92,9 +92,16 @@
                     </a>
 
                     {{-- @else is the opposite of @guest (i.e., the user IS logged in).
-                        So this block shows the welcome text and logout button.--}}
+                        So this block shows the welcome text, optional admin link and logout button.--}}
                     @else
                     <div class="flex items-center space-x-3">
+                        @can('admin')
+                        <a href="{{ route('admin.users.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                            <i class="fas fa-shield-alt mr-1 text-[11px]"></i>
+                            <span>Admin</span>
+                        </a>
+                        @endcan
+
                         {{-- Show the logged-in user’s name --}}
                         <span class="text-gray-700 text-sm">Welcome, {{ Auth::user()->name }}</span>
 

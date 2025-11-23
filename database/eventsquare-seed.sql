@@ -292,15 +292,16 @@ VALUES
 (12, 'leonor.guerra@email.com', 'Leonor Guerra', 'Portimão', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-12', NULL),
 (13, 'bruno.nogueira@email.com', 'Bruno Nogueira', 'Viana do Castelo', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-13', NULL),
 (14, 'inês.barbosa@email.com', 'Inês Barbosa', 'Funchal', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-14', NULL),
-(15, 'diogo.ramos@email.com', 'Diogo Ramos', 'Ponta Delgada', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-15', NULL);
+(15, 'diogo.ramos@email.com', 'Diogo Ramos', 'Ponta Delgada', '$2y$12$b7HewdgVUFbMwKXW30p1tOMKZNzDxJGa3yy7F.EPh.OL0Gs5ZO0Sy', 'active', '2025-09-15', NULL),
+(16, 'admin.sousa@eventsquare.pt', 'Ana Sousa', 'Porto', '$2y$12$fpmJCaXVOpZeN.C57rzLI.1Kb7DATSudXQlEa.FbuCNEPEqNAfEma', 'active', '2025-09-01', '2025-10-15');
 
 --R02 (admin)
 INSERT INTO admin (id_admin, email, name, password_hash, status, created_at, updated_at)
 OVERRIDING SYSTEM VALUE
 VALUES
-(1, 'admin.sousa@eventsquare.pt', 'Ana Sousa', 'adminhash123', 'active', '2025-09-01', '2025-10-15'),
-(2, 'admin.pires@eventsquare.pt', 'João Pires', 'adminhash456', 'active', '2025-09-02', NULL),
-(3, 'admin.ferreira@eventsquare.pt', 'Manuel Ferreira', 'adminhash789', 'active', '2025-09-03', '2025-10-10');
+(1, 'admin.sousa@eventsquare.pt', 'Ana Sousa', '$2y$12$fpmJCaXVOpZeN.C57rzLI.1Kb7DATSudXQlEa.FbuCNEPEqNAfEma', 'active', '2025-09-01', '2025-10-15'),
+(2, 'admin.pires@eventsquare.pt', 'João Pires', '$2y$12$fpmJCaXVOpZeN.C57rzLI.1Kb7DATSudXQlEa.FbuCNEPEqNAfEma', 'active', '2025-09-02', NULL),
+(3, 'admin.ferreira@eventsquare.pt', 'Manuel Ferreira', '$2y$12$fpmJCaXVOpZeN.C57rzLI.1Kb7DATSudXQlEa.FbuCNEPEqNAfEma', 'active', '2025-09-03', '2025-10-10');
 
 --R03 (profile)
 INSERT INTO profile (id_user, photo_url)
@@ -321,7 +322,7 @@ VALUES
 (14, 'https://picsum.photos/id/114/200'),
 (15, 'https://picsum.photos/id/115/200');
 
---R04 (event) 
+--R04 (event) git merge feature/us01/02/04-events-readonly
 INSERT INTO event (id_event, id_organizer, title, description, visibility, status, capacity, start_at, end_at, venue, created_at, updated_at, canceled_at)
 OVERRIDING SYSTEM VALUE
 VALUES

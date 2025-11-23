@@ -10,6 +10,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Profile;
 
 class User extends Authenticatable
 {
@@ -69,10 +70,13 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            //'email_verified_at' => 'datetime',
-            // Ensures password is always hashed automatically when set.
-            'password' => 'hashed',
+            // Add casts here if needed (e.g. dates).
         ];
+    }
+
+    public function getRouteKeyName()
+    {
+        return 'id_user';
     }
 
     /*
@@ -93,6 +97,12 @@ class User extends Authenticatable
     public function getAuthPassword()
     {
         return $this->password_hash;
+    }
+
+    // R03 profile (1:1) per ER/EBD
+    public function profile(): HasOne
+    {
+        return $this->hasOne(Profile::class, 'id_user', 'id_user');
     }
 
 }

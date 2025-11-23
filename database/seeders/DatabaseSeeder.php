@@ -33,6 +33,13 @@ class DatabaseSeeder extends Seeder
             )
         ");
 
+        DB::statement("
+            SELECT setval(
+                pg_get_serial_sequence('admin_action', 'id_action'),
+                (SELECT COALESCE(MAX(id_action), 1) FROM admin_action)
+            )
+        ");
+
         $this->command?->info('Database seeded using EventSquare schema: ' . ($schema ?? 'lbaw2536'));
     }
 }

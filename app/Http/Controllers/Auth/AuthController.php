@@ -139,7 +139,7 @@ class AuthController extends Controller
 
             // Redirect the user to the route named 'events.create'
             // return redirect()->route('events.create');
-            return redirect()->route('login');
+            return redirect()->route('home');
 ;
         }
 

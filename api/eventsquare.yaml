@@ -236,3 +236,179 @@ paths:
                   value: "/register"
         "422":
           description: "Validation error."
+
+  ####################################################################
+  # M05 – Admin: User Administration (AD07)
+  ####################################################################
+
+  /admin/users:
+    get:
+      operationId: R501
+      summary: "R501: List/Search users (admin view)"
+      description: |
+        Show paginated list of user accounts with optional search by name or email (query param `q`).
+        Access: ADM.
+        Underlying tables: `user` (R01) joined with `profile` (R03) for photo display.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: "Search substring (case-insensitive) applied to name OR email."
+      responses:
+        "200":
+          description: "OK. Returns HTML with user list."
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (not an admin)."
+
+    post:
+      operationId: R503
+      summary: "R503: Create user (admin action)"
+      description: |
+        Process create-user form and insert new user row (R01) plus profile row (R03).
+        Logs audit entries into `admin_action` (R18) and `admin_user_action` (R19) with action = `create user account`.
+        Access: ADM.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                location: { type: string }
+                password: { type: string, minLength: 8 }
+                status: { type: string, enum: [active, blocked, deleted] }
+              required: [name, email, password, status]
+      responses:
+        "302":
+          description: "Redirect to the user detail page on success."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "422":
+          description: "Validation error."
+
+  /admin/users/create:
+    get:
+      operationId: R502
+      summary: "R502: Create user form"
+      description: "Show HTML form for creating a user account. Access: ADM."
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "OK. HTML form."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+
+  /admin/users/{userId}:
+    get:
+      operationId: R504
+      summary: "R504: Show user (admin view)"
+      description: |
+        Show details for a single user including profile info if present.
+        Access: ADM.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "OK. HTML user detail page."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "404":
+          description: "User not found."
+
+    put:
+      operationId: R506
+      summary: "R506: Update user (admin action)"
+      description: |
+        Process edit-user form and update `user` row.
+        Optional password change if provided.
+        Logs audit entries into `admin_action` (R18) and `admin_user_action` (R19) with action = `edit user account`.
+        Access: ADM.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                location: { type: string }
+                password: { type: string, minLength: 8, description: "Optional. If provided replaces existing password." }
+                status: { type: string, enum: [active, blocked, deleted] }
+              required: [name, email, status]
+      responses:
+        "302":
+          description: "Redirect to updated user detail page."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "404":
+          description: "User not found."
+        "422":
+          description: "Validation error."
+
+  /admin/users/{userId}/edit:
+    get:
+      operationId: R505
+      summary: "R505: Edit user form"
+      description: "Show HTML form populated with existing user data. Access: ADM."
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "OK. HTML edit form."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "404":
+          description: "User not found."
