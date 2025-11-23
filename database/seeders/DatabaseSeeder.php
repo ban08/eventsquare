@@ -26,19 +26,26 @@ class DatabaseSeeder extends Seeder
 
         DB::unprepared($sql);
 
+        // Resync all PK sequences after seeding
         DB::statement("
             SELECT setval(
                 pg_get_serial_sequence('\"user\"', 'id_user'),
-                (SELECT COALESCE(MAX(id_user), 1) FROM \"user\")
+                (SELECT COALESCE(MAX(\"id_user\"), 1) FROM \"user\")
             )
         ");
-
         DB::statement("
             SELECT setval(
                 pg_get_serial_sequence('admin_action', 'id_action'),
                 (SELECT COALESCE(MAX(id_action), 1) FROM admin_action)
             )
         ");
+        DB::statement("
+            SELECT setval(
+                pg_get_serial_sequence('event', 'id_event'),
+                (SELECT COALESCE(MAX(id_event), 1) FROM event)
+            )
+        ");
+        // Add similar statements for other tables with GENERATED PKs if needed
 
         $this->command?->info('Database seeded using EventSquare schema: ' . ($schema ?? 'lbaw2536'));
     }

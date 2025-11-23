@@ -1,5 +1,6 @@
 {{-- 
-    All pages (login, register, etc.) will "extend" this layout.
+    This is the main layout for the site.
+    All pages (login, register, events etc.) will "extend" this layout.
 --}}
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
@@ -60,20 +61,10 @@
                 </a>
 
                 {{--MAIN NAVIGATION (center)--}}
-                {{--Hidden on small screens (hidden),
-                    shown from medium screens up (md:flex).--}}
-                <!--<nav class="hidden md:flex items-center space-x-8">
-                    {{--@auth means: only show this block when the user is logged in.
-                        If not logged in, this part is skipped.--}}
-                    @auth
-                    {{-- Link to the "Create Event" page.
-                        Right now, this uses a plain URL (/events/create).
-                        You can later change it to route('events.create') once you have that route.--}}
-                    <a href="{{ url('/events/create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
-                        <i class="fas fa-plus mr-2"></i>Create Event
-                    </a>
-                    @endauth
-                </nav>-->
+                <nav class="hidden md:flex items-center space-x-8">
+
+                </nav>
+
 
                 {{--USER MENU (right side)--}}
                 <div class="flex items-center space-x-4">
@@ -94,24 +85,38 @@
                     {{-- @else is the opposite of @guest (i.e., the user IS logged in).
                         So this block shows the welcome text, optional admin link and logout button.--}}
                     @else
-                    <div class="flex items-center space-x-3">
-                        @can('admin')
-                        <a href="{{ route('admin.users.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
-                            <i class="fas fa-shield-alt mr-1 text-[11px]"></i>
-                            <span>Admin</span>
+                    <div class="flex items-center gap-4 text-sm text-gray-700">
+                        <span class="mr-8 flex items-center gap-2">
+                            Welcome,&nbsp;
+                            <a
+                                href="#"
+                                onclick="event.preventDefault();"
+                                aria-disabled="true"
+                                class="font-semibold hover:underline cursor-pointer"
+                            > {{ Auth::user()->name }}
+                            </a>
+                            @can('admin')
+                            <a href="{{ route('admin.users.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                                <i class="fas fa-shield-alt mr-1 text-[11px]"></i>
+                                <span>Admin</span>
+                            </a>
+                            @endcan
+                        </span>
+
+                        <a href="{{ route('events.mine') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                            <i class="fas fa-calendar-alt mr-1 text-[11px]"></i>
+                            <span>My events</span>
                         </a>
-                        @endcan
+                        <a href="{{ url('/events/create') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                            <i class="fas fa-plus mr-1 text-[11px]"></i>
+                            <span>Create event</span>
+                        </a>
 
-                        {{-- Show the logged-in user’s name --}}
-                        <span class="text-gray-700 text-sm">Welcome, {{ Auth::user()->name }}</span>
-
-                        {{--Logout form.
-                            We use a <form> with POST because Laravel's logout route 
-                            is usually defined as POST and needs a CSRF token.--}}
                         <form action="{{ url('/logout') }}" method="POST" class="inline">
                             @csrf
-                            <button type="submit" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
-                                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                            <button type="submit" class="inline-flex items-center rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition">
+                                <i class="fas fa-sign-out-alt mr-1 text-[11px]"></i>
+                                <span>Logout</span>
                             </button>
                         </form>
                     </div>

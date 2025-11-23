@@ -108,6 +108,10 @@ class AuthController extends Controller
      */
     public function showLogin()
     {
+        if (Auth::check()) {
+            return redirect()->route('events.index');
+        }
+        
         // Return the Blade view stored at resources/views/auth/login.blade.php
         return view('auth.login');
     }
@@ -139,7 +143,8 @@ class AuthController extends Controller
 
             // Redirect the user to the route named 'events.create'
             // return redirect()->route('events.create');
-            return redirect()->route('home');
+            // return redirect()->route('login');
+            return redirect()->route('events.index');
 ;
         }
 

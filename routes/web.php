@@ -5,16 +5,6 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\AdminUserController;
  
-// Public event browsing
-Route::controller(EventController::class)->group(function () {
-    Route::get('/', 'home')->name('home'); // R200
-
-    Route::get('/events', 'index')->name('events.index'); // R201
-    Route::get('/events/{event}', 'show')->name('events.show'); // R203
-
-    Route::get('/api/events', 'searchApi')->name('api.events.search'); // R206
-});
-
 // Authentication routes (AuthController version from main)
 Route::controller(AuthController::class)->group(function () {
     // Show login form
@@ -33,6 +23,7 @@ Route::controller(AuthController::class)->group(function () {
     Route::post('/register', 'register');
 });
 
+// Admin user management (AD07, if required by ER/EBD)
 Route::middleware(['auth', 'can:admin'])
     ->prefix('admin')
     ->name('admin.')
@@ -44,3 +35,32 @@ Route::middleware(['auth', 'can:admin'])
         Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
     });
+
+// Event management routes 
+Route::controller(EventController::class)->group(function () {
+    Route::get('/', 'home')->name('home'); // R200
+
+    Route::get('/events', 'index')->name('events.index'); // R201
+
+    // Show the "create event" form.
+    // Only logged-in users can access this page.    
+    Route::get('/events/create', 'create')->name('events.create')->middleware('auth');
+
+    // Handle the "create event" form when submitted.
+    // This saves the event in the database.    
+    Route::post('/events', 'store')->name('events.store')->middleware('auth');
+
+    // Show a single event by its ID (e.g. /events/5).
+    Route::get('/events/{event}', 'show')->name('events.show');
+
+    Route::get('/api/events', 'searchApi')->name('api.events.search'); // R206
+
+    // Page to list only MY events (events where I am the organizer)
+    Route::get('/my-events', 'mine')->name('events.mine')->middleware('auth');    
+
+    // Show edit form for an existing event (OR02)
+    Route::get('/events/{event}/edit', 'edit')->name('events.edit')->middleware('auth');
+
+    // Handle edit form submission (update existing event) (OR02)
+    Route::put('/events/{event}', 'update')->name('events.update')->middleware('auth');
+});
