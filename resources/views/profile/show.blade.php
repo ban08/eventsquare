@@ -75,13 +75,12 @@
                             View events
                         </a>
 
-                        {{-- RU02 will link here later --}}
-                        <button type="button"
-                                class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                                disabled>
+                        <a href="{{ route('profile.edit') }}"
+                        class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
                             <i class="fas fa-pen mr-2 text-xs"></i>
-                            Edit profile (work in progress)
-                        </button>
+                            Edit profile
+                        </a>
+
                     </div>
                 </div>
             </div>

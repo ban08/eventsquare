@@ -71,7 +71,11 @@ Route::controller(EventController::class)->group(function () {
     // Delete an event (OR08) - only for authenticated users
     Route::delete('/events/{event}', 'destroy')->name('events.destroy')->middleware('auth');    
 
+});
+
 // Profile
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show'); // RU01
+    Route::get('/profile/edit', 'edit')->name('profile.edit');    // RU02
+    Route::post('/profile/update', 'update')->name('profile.update');
 });
