@@ -167,4 +167,93 @@ class EventController extends Controller
         // Show the "show event" view and pass the event to it.
         return view('events.show', compact('event'));
     }
+
+
+    // List events created by the logged-in user ("My Events").
+    public function mine()
+    {
+        // If not logged in, send to login
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        // Select only events where user is the organizer
+        $events = Event::where('id_organizer', Auth::id())
+            ->orderBy('start_at', 'asc')
+            ->get();
+
+        // Show a dedicated "my events" view
+        return view('events.mine', compact('events'));
+    }   
+    
+    // Show the form for editing an existing event
+    public function edit(Event $event)
+    {
+        // Only the organizer can edit this event
+        if (!Auth::check() || Auth::id() !== $event->id_organizer) {
+            abort(403, 'You are not allowed to edit this event.');
+        }
+
+        // All tags in the system
+        $tags = Tag::all();
+
+        // IDs of tags already attached to this event
+        $selectedTags = $event->tags->pluck('id_tag')->toArray();
+
+        return view('events.edit', compact('event', 'tags', 'selectedTags'));        
+    }  
+    
+
+    // Update an existing event in the database
+    public function update(Request $request, Event $event)
+    {
+        // Only the organizer may update
+        if (!Auth::check() || Auth::id() !== $event->id_organizer) {
+            abort(403, 'You are not allowed to edit this event.');
+        }
+
+        // 1. Validate inputs (same as in store())
+        $validated = $request->validate([
+            // 'title'       => ['required', 'string', 'max:255'], --- don't edit
+            'description' => ['nullable', 'string'],
+            'start_at'    => ['required', 'date'],
+            'end_at'      => ['required', 'date', 'after:start_at'],
+            'venue'       => ['required', 'string', 'max:255'],
+            'capacity'    => ['required', 'integer', 'min:1'],
+            'visibility'  => ['required', 'in:public,private'],
+            'tags'        => ['nullable', 'array'],
+            'tags.*'      => ['integer', 'exists:tag,id_tag'],
+        ]);
+
+        // 2. Keep the "48 hours from now" rule
+        $startAt = Carbon::parse($validated['start_at']);
+
+        if ($startAt->lt(now()->addHours(48))) {
+            return back()
+                ->withErrors([
+                    'start_at' => 'The event must start at least 48 hours from now.',
+                ])
+                ->withInput();
+        }
+
+        // 3. Update event fields
+        $event->update([
+            // 'title'       => $validated['title'], --- don't edit
+            'description' => $validated['description'] ?? null,
+            'start_at'    => $validated['start_at'],
+            'end_at'      => $validated['end_at'],
+            'venue'       => $validated['venue'],
+            'capacity'    => $validated['capacity'],
+            'visibility'  => $validated['visibility']
+        ]);
+
+        // 4. Update tags (sync replaces existing tags with the new list)
+        $event->tags()->sync($validated['tags'] ?? []);
+
+        // 5. Redirect back to event details
+        return redirect()
+            ->route('events.show', $event->id_event)
+            ->with('success', 'Event updated successfully!');
+    }
+    
 }

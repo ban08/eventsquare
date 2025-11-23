@@ -22,10 +22,12 @@ Route::controller(AuthController::class)->group(function () {
     Route::post('/register', 'register');
 });
 
+/*
 // Plain events page for logged-in users
 Route::get('/events', function () {
     return view('events.index');
 })->name('events.index')->middleware('auth');  // User must be logged in
+*/
 
 // Event management routes 
 Route::controller(EventController::class)->group(function () {
@@ -45,4 +47,13 @@ Route::controller(EventController::class)->group(function () {
     Route::get('/events/{event}', 'show')->name('events.show');
 
     Route::get('/api/events', 'searchApi')->name('api.events.search'); // R206
+
+    // Page to list only MY events (events where I am the organizer)
+    Route::get('/my-events', 'mine')->name('events.mine')->middleware('auth');    
+
+    // Show edit form for an existing event (OR02)
+    Route::get('/events/{event}/edit', 'edit')->name('events.edit')->middleware('auth');
+
+    // Handle edit form submission (update existing event) (OR02)
+    Route::put('/events/{event}', 'update')->name('events.update')->middleware('auth');
 });

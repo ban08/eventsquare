@@ -1,5 +1,6 @@
 {{-- 
-    All pages (login, register, etc.) will "extend" this layout.
+    This is the main layout for the site.
+    All pages (login, register, events etc.) will "extend" this layout.
 --}}
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
@@ -61,7 +62,7 @@
 
                 {{--MAIN NAVIGATION (center)--}}
                 <nav class="hidden md:flex items-center space-x-8">
-                    {{-- keep empty for now, or add future links like "Browse events" --}}
+
                 </nav>
 
 
@@ -97,7 +98,15 @@
                             </a>
                         </span>
 
-                        {{-- Create event (simple text link) --}}
+                        {{-- My Events link --}}
+                        <a
+                            href="{{ route('events.mine') }}"
+                            class="hover:underline"
+                        >
+                            My events
+                        </a>
+
+                        {{-- Create event link --}}
                         <a
                             href="{{ url('/events/create') }}"
                             class="hover:underline"

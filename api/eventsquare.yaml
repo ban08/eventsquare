@@ -307,3 +307,38 @@ paths:
           description: "OK. HTML page for a single event."
         "404":
           description: "Event not found."
+  
+    # ACTION endpoint: update event (OR02)
+    post:
+      operationId: R204
+      summary: "R204: Edit event (action)"
+      description: |
+        Process the edit-event form and update the event.
+        Only the organizer is allowed.
+        Access: ORG.
+      tags: ["M02: Events"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/EventUpdateForm"
+      responses:
+        "302":
+          description: "Redirect back to the event page."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/events/{eventId}"
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (current user is not organizer)."
+        "422":
+          description: "Validation error."
