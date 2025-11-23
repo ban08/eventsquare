@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\ProfileController;
  
 // Authentication routes (AuthController version from main)
 Route::controller(AuthController::class)->group(function () {
@@ -18,14 +19,13 @@ Route::controller(AuthController::class)->group(function () {
 
     // Show registration form
     Route::get('/register', 'showRegister')->name('register');
-use App\Http\Controllers\ProfileController;
+    Route::post('/register', 'register');
+});
+
 
 // Home
 Route::redirect('/', '/login');
 
-    // Handle registration form submission
-    Route::post('/register', 'register');
-});
 
 // Admin user management (AD07, if required by ER/EBD)
 Route::middleware(['auth', 'can:admin'])
@@ -77,8 +77,8 @@ Route::controller(EventController::class)->group(function () {
 });
 
 // Profile
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show'); // RU01
-    Route::get('/profile/edit', 'edit')->name('profile.edit');    // RU02
+Route::middleware('auth')->controller(ProfileController::class)->group(function () {
+    Route::get('/profile', 'show')->name('profile.show');       // RU01
+    Route::get('/profile/edit', 'edit')->name('profile.edit');  // RU02
     Route::post('/profile/update', 'update')->name('profile.update');
 });
