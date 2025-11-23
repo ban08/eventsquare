@@ -237,6 +237,62 @@ paths:
         "422":
           description: "Validation error."
 
+  /profile:
+    get:
+      operationId: R106
+      summary: "R106: View my profile"
+      description: "Show the authenticated user's profile page."
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "OK. HTML profile page."
+        "401":
+          description: "Unauthorized."
+
+  /profile/edit:
+    get:
+      operationId: R107
+      summary: "R107: Edit profile form"
+      description: "Show the edit-profile form."
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "OK. Edit profile form."
+        "401":
+          description: "Unauthorized."
+
+  /profile/update:
+    post:
+      operationId: R108
+      summary: "R108: Update profile"
+      description: "Update authenticated user's profile data."
+      tags: ["M01: Authentication & Profile"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                location: { type: string }
+                picture: { type: string, format: binary }
+      responses:
+        "302":
+          description: "Redirect to profile page."
+        "422":
+          description: "Validation error."
+
+
   ####################################################################
   # M02 – Events
   ####################################################################
@@ -466,6 +522,32 @@ paths:
           description: "Forbidden (current user is not organizer)."
         "404":
           description: "Event not found."
+  
+  ####################################################################
+  # M03 – Participation (Applications & Invitations)
+  ####################################################################
+
+  /events/{eventId}/apply:
+    post:
+      operationId: R301
+      summary: "R301: Apply to join event"
+      description: "Submit an application to participate in the event."
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "302":
+          description: "Redirect back to event page."
+        "401":
+          description: "Unauthorized (user not logged in)."
+        "403":
+          description: "Forbidden (already applied, event full, organizer, or already participant)."
+        "404":
+          description: "Event not found."
+
 
  ####################################################################
   # M05 – Admin: User Administration (AD07)
