@@ -8,7 +8,17 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        // Create table matching ER/EBD (simplified enum via CHECK constraint for portability)
+        // Defer to SQL seed if domain tables are not yet available
+        if (!Schema::hasTable('event') || !Schema::hasTable('user')) {
+            return; // ER/EBD schema is created by SQL seed
+        }
+
+        // If already created (by seed or previous run), skip
+        if (Schema::hasTable('invitation')) {
+            return;
+        }
+
+        // Create table 
         Schema::create('invitation', function (Blueprint $table) {
             $table->id('id_invitation');
             $table->unsignedBigInteger('id_event');
