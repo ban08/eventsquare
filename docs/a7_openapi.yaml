@@ -488,69 +488,7 @@ paths:
         "409":
           description: "Already responded."
   
-    # ACTION endpoint: update event (OR02)
-    post:
-      operationId: R204
-      summary: "R204: Edit event (action)"
-      description: |
-        Process the edit-event form and update the event.
-        Only the organizer is allowed.
-        Access: ORG.
-      tags: ["M02: Events"]
-      x-permissions: [ORG]
-      security:
-        - sessionCookie: []
-      parameters:
-        - $ref: "#/components/parameters/EventId"
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: "#/components/schemas/EventUpdateForm"
-      responses:
-        "302":
-          description: "Redirect back to the event page."
-          headers:
-            Location:
-              schema:
-                type: string
-              example: "/events/{eventId}"
-        "401":
-          description: "Unauthorized (not logged in)."
-        "403":
-          description: "Forbidden (current user is not organizer)."
-        "422":
-          description: "Validation error."
-
-    # ACTION endpoint: delete event (OR08)
-    delete:
-      operationId: R205
-      summary: "R205: Delete event (action)"
-      description: |
-        Delete an event.
-        Only the organizer can perform this action.
-        Access: ORG.
-      tags: ["M02: Events"]
-      x-permissions: [ORG]
-      security:
-        - sessionCookie: []
-      parameters:
-        - $ref: "#/components/parameters/EventId"
-      responses:
-        "302":
-          description: "Redirect to the events list after deletion."
-          headers:
-            Location:
-              schema:
-                type: string
-              example: "/events"
-        "401":
-          description: "Unauthorized (not logged in)."
-        "403":
-          description: "Forbidden (current user is not organizer)."
-        "404":
-          description: "Event not found."
+  
 
 ####################################################################
   # M05 – Admin: User Administration (AD07)
