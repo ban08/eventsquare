@@ -279,6 +279,7 @@ paths:
         "401":
           description: "Unauthorized (not logged in)."
 
+  /events
     # ACTION endpoint: create a new event (OR01)
     post:
       operationId: R207
