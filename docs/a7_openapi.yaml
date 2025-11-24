@@ -393,3 +393,338 @@ paths:
           description: "Forbidden (current user is not organizer)."
         "404":
           description: "Event not found."
+####################################################################
+  # M03 – Participation (Invitations)
+####################################################################
+  /events/{eventId}/invite:
+    post:
+      operationId: R301
+      summary: "R301: Invite user to event (OR03)"
+      description: |
+        Organizer invites a user to participate in the event. Creates a new invitation (status=pending).
+        Access: ORG.
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                invitee_id:
+                  type: integer
+                  description: "User ID to invite (must exist and not already invited)."
+              required: [invitee_id]
+      responses:
+        "302":
+          description: "Redirect back to event page with flash message."
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (not organizer)."
+        "422":
+          description: "Validation error (invalid or duplicate invitee)."
+
+  /invitations/{invitationId}/accept:
+    post:
+      operationId: R302
+      summary: "R302: Accept invitation (RU10)"
+      description: |
+        Invitee accepts an invitation. Status becomes 'accepted', responded_at is set. May auto-create participation.
+        Access: USR (invitee only).
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: invitationId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "302":
+          description: "Redirect back with success flash message."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not invitee)."
+        "404":
+          description: "Invitation not found."
+        "409":
+          description: "Already responded."
+
+  /invitations/{invitationId}/decline:
+    post:
+      operationId: R303
+      summary: "R303: Decline invitation (RU10)"
+      description: |
+        Invitee declines an invitation. Status becomes 'declined', responded_at is set.
+        Access: USR (invitee only).
+      tags: ["M03: Participation (Applications & Invitations)"]
+      x-permissions: [USR]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: invitationId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "302":
+          description: "Redirect back with success flash message."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not invitee)."
+        "404":
+          description: "Invitation not found."
+        "409":
+          description: "Already responded."
+  
+    # ACTION endpoint: update event (OR02)
+    post:
+      operationId: R204
+      summary: "R204: Edit event (action)"
+      description: |
+        Process the edit-event form and update the event.
+        Only the organizer is allowed.
+        Access: ORG.
+      tags: ["M02: Events"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/EventUpdateForm"
+      responses:
+        "302":
+          description: "Redirect back to the event page."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/events/{eventId}"
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (current user is not organizer)."
+        "422":
+          description: "Validation error."
+
+    # ACTION endpoint: delete event (OR08)
+    delete:
+      operationId: R205
+      summary: "R205: Delete event (action)"
+      description: |
+        Delete an event.
+        Only the organizer can perform this action.
+        Access: ORG.
+      tags: ["M02: Events"]
+      x-permissions: [ORG]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "302":
+          description: "Redirect to the events list after deletion."
+          headers:
+            Location:
+              schema:
+                type: string
+              example: "/events"
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (current user is not organizer)."
+        "404":
+          description: "Event not found."
+
+####################################################################
+  # M05 – Admin: User Administration (AD07)
+####################################################################
+
+  /admin/users:
+    get:
+      operationId: R501
+      summary: "R501: List/Search users (admin view)"
+      description: |
+        Show paginated list of user accounts with optional search by name or email (query param `q`).
+        Access: ADM.
+        Underlying tables: `user` (R01) joined with `profile` (R03) for photo display.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: "Search substring (case-insensitive) applied to name OR email."
+      responses:
+        "200":
+          description: "OK. Returns HTML with user list."
+        "401":
+          description: "Unauthorized (not logged in)."
+        "403":
+          description: "Forbidden (not an admin)."
+
+    post:
+      operationId: R503
+      summary: "R503: Create user (admin action)"
+      description: |
+        Process create-user form and insert new user row (R01) plus profile row (R03).
+        Logs audit entries into `admin_action` (R18) and `admin_user_action` (R19) with action = `create user account`.
+        Access: ADM.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                location: { type: string }
+                password: { type: string, minLength: 8 }
+                status: { type: string, enum: [active, blocked, deleted] }
+              required: [name, email, password, status]
+      responses:
+        "302":
+          description: "Redirect to the user detail page on success."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "422":
+          description: "Validation error."
+
+  /admin/users/create:
+    get:
+      operationId: R502
+      summary: "R502: Create user form"
+      description: "Show HTML form for creating a user account. Access: ADM."
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "OK. HTML form."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+
+  /admin/users/{userId}:
+    get:
+      operationId: R504
+      summary: "R504: Show user (admin view)"
+      description: |
+        Show details for a single user including profile info if present.
+        Access: ADM.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "OK. HTML user detail page."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "404":
+          description: "User not found."
+
+    put:
+      operationId: R506
+      summary: "R506: Update user (admin action)"
+      description: |
+        Process edit-user form and update `user` row.
+        Optional password change if provided.
+        Logs audit entries into `admin_action` (R18) and `admin_user_action` (R19) with action = `edit user account`.
+        Access: ADM.
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                location: { type: string }
+                password: { type: string, minLength: 8, description: "Optional. If provided replaces existing password." }
+                status: { type: string, enum: [active, blocked, deleted] }
+              required: [name, email, status]
+      responses:
+        "302":
+          description: "Redirect to updated user detail page."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "404":
+          description: "User not found."
+        "422":
+          description: "Validation error."
+
+  /admin/users/{userId}/edit:
+    get:
+      operationId: R505
+      summary: "R505: Edit user form"
+      description: "Show HTML form populated with existing user data. Access: ADM."
+      tags: ["M05: Admin & Static"]
+      x-permissions: [ADM]
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "OK. HTML edit form."
+        "401":
+          description: "Unauthorized."
+        "403":
+          description: "Forbidden (not admin)."
+        "404":
+          description: "User not found."
+    
