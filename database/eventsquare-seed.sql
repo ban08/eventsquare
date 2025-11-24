@@ -509,3 +509,18 @@ VALUES
 (1, 'dismiss report', 1),  
 (3, 'resolve report', 3);
 
+-- Update sequences to match the highest IDs inserted
+SELECT setval('lbaw2536.user_id_user_seq', 16, true);
+SELECT setval('lbaw2536.admin_id_admin_seq', 3, true);
+SELECT setval('lbaw2536.tag_id_tag_seq', 8, true);
+SELECT setval('lbaw2536.event_id_event_seq', 8, true);
+SELECT setval('lbaw2536.invitation_id_invitation_seq', 6, true);
+SELECT setval('lbaw2536.application_id_application_seq', 8, true);
+SELECT setval('lbaw2536.participation_id_participation_seq', 12, true);
+SELECT setval('lbaw2536.comment_id_comment_seq', 7, true);
+SELECT setval('lbaw2536.notification_id_notification_seq', 6, true);
+SELECT setval('lbaw2536.poll_id_poll_seq', 3, true);
+SELECT setval('lbaw2536.poll_option_id_option_seq', 9, true);
+SELECT setval('lbaw2536.event_report_id_report_seq', 4, true);
+SELECT setval('lbaw2536.admin_action_id_action_seq', 3, true);
+SELECT setval('lbaw2536.upload_id_upload_seq', 5, true);

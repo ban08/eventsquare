@@ -16,31 +16,6 @@
         <!-- Header -->
         {{--Center all header elements (icon, title, subtitle)--}}
         <div class="text-center">
-
-    <label for="location">Location</label>
-    <input
-        id="location"
-        type="text"
-        name="location"
-        value="{{ old('location') }}"
-        autocomplete="location"
-    >
-    @error('location')
-      <span id="location-error" class="error" role="alert">{{ $message }}</span>
-    @enderror
-
-    <label for="password">Password</label>
-    <input
-        id="password"
-        type="password"
-        name="password"
-        required
-        autocomplete="new-password"
-    >
-    @error('password')
-      <span id="password-error" class="error" role="alert">{{ $message }}</span>
-    @enderror
-
             {{--Main heading for the page--}}
             <h2 class="text-3xl font-bold text-gray-900">Join EventSquare</h2>
             {{--Short description text under the title--}}

@@ -314,6 +314,8 @@ paths:
         "401":
           description: "Unauthorized (not logged in)."
 
+
+  /events:
     # ACTION endpoint: create a new event (OR01)
     post:
       operationId: R207
@@ -344,6 +346,7 @@ paths:
           description: "Unauthorized (not logged in)."
         "422":
           description: "Validation error."
+
 
   /events/{eventId}:
     # VIEW endpoint: event details page (HTML)
