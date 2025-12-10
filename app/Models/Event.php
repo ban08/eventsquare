@@ -191,4 +191,27 @@ class Event extends Model
             'id_tag'         
         );
     }
+
+    // Get the effective status of the event.
+    // Returns 'completed' if the event has ended, regardless of stored status.
+    // This ensures completed events cannot be edited even if status wasn't updated in DB.
+    public function getEffectiveStatusAttribute(): string
+    {
+        // For canceled events, keep the canceled status even if past
+        if ($this->status === 'canceled') {
+            return 'canceled';
+        }
+        // If event has ended, it's completed regardless of stored status
+        if ($this->is_past) {
+            return 'completed';
+        }
+        return $this->status;
+    }
+
+    // Check if the event can be edited.
+    // Events that have ended cannot be edited.
+    public function getIsEditableAttribute(): bool
+    {
+        return !$this->is_past;
+    }
 }

@@ -178,13 +178,24 @@ class EventController extends Controller
             return redirect()->route('login');
         }
 
-        // Select only events where user is the organizer
-        $events = Event::where('id_organizer', Auth::id())
+        // Get events organized by the user
+        $organizedEvents = Event::where('id_organizer', Auth::id())
             ->orderBy('start_at', 'asc')
             ->get();
 
-        // Show a dedicated "my events" view
-        return view('events.mine', compact('events'));
+        // Get events where the user is a participant (has not left)
+        $participatedEvents = Event::whereHas('participations', function ($query) {
+                $query->where('id_user', Auth::id())
+                      ->whereNull('left_at');
+            })
+            ->orderBy('start_at', 'asc')
+            ->get();
+
+        // Show a dedicated "my events" view with both types of events
+        return view('events.mine', [
+            'organizedEvents' => $organizedEvents,
+            'participatedEvents' => $participatedEvents
+        ]);
     }   
     
     // Show the form for editing an existing event
@@ -195,6 +206,11 @@ class EventController extends Controller
             abort(403, 'You are not allowed to edit this event.');
         }
 
+        // Completed events cannot be edited
+        if ($event->is_past) {
+            abort(403, 'Completed events cannot be edited.');
+        }
+
         // All tags in the system
         $tags = Tag::all();
 
@@ -202,7 +218,7 @@ class EventController extends Controller
         $selectedTags = $event->tags->pluck('id_tag')->toArray();
 
         return view('events.edit', compact('event', 'tags', 'selectedTags'));        
-    }  
+    } 
     
 
     // Update an existing event in the database
@@ -211,6 +227,12 @@ class EventController extends Controller
         // Only the organizer may update
         if (!Auth::check() || Auth::id() !== $event->id_organizer) {
             abort(403, 'You are not allowed to edit this event.');
+        }
+
+
+        // Completed events cannot be edited
+        if ($event->is_past) {
+            abort(403, 'Completed events cannot be edited.');
         }
 
         // 1. Validate inputs (same as in store())

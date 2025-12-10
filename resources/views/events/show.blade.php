@@ -16,19 +16,50 @@
 
                 <div class="p-8 sm:p-10 bg-white rounded-b-3xl shadow-lg">
                     {{-- Title + status chips --}}
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <h2 class="text-3xl font-bold text-indigo-700 tracking-tight">{{ $event->title }}</h2>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex-1">
+                            <h2 class="text-3xl font-bold text-indigo-700 tracking-tight mb-3">{{ $event->title }}</h2>
 
-                        <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                            <span class="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-indigo-700 shadow">
-                                <i class="fas fa-calendar-check"></i>
-                                <span>Public event</span>
-                            </span>
-                            <span class="inline-flex items-center gap-1 rounded-full bg-slate-200 px-3 py-1 text-slate-700 shadow">
-                                <i class="fas fa-clock"></i>
-                                <span>Upcoming</span>
-                            </span>
+                            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                                <span class="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-indigo-700 shadow">
+                                    <i class="fas fa-calendar-check"></i>
+                                    <span>{{ ucfirst($event->visibility) }} event</span>
+                                </span>
+                                <span class="inline-flex items-center gap-1 rounded-full
+                                    @class([
+                                        'bg-green-100 text-green-700' => $event->status === 'published',
+                                        'bg-yellow-100 text-yellow-700' => $event->status === 'draft',
+                                        'bg-red-100 text-red-700' => $event->status === 'canceled',
+                                        'bg-blue-100 text-blue-700' => $event->status === 'completed',
+                                        'bg-gray-100 text-gray-700' => true,
+                                    ]) px-3 py-1 shadow">
+                                    <i class="fas fa-clock"></i>
+                                    <span>{{ ucfirst($event->effective_status) }}</span>
+                                </span>
+                            </div>
                         </div>
+
+                        {{-- Organizer actions (Edit, Delete buttons) --}}
+                        @auth
+                            @if(Auth::id() === $event->id_organizer && $event->is_editable)
+                                <div class="flex gap-2">
+                                    <a href="{{ route('events.edit', $event->id_event) }}"
+                                       class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 cursor-pointer">
+                                        <i class="fas fa-edit"></i>
+                                        <span>Edit Event</span>
+                                    </a>
+
+                                    @if($event->can_hard_delete)
+                                        <button type="button"
+                                                onclick="openDeleteModal('delete-form-{{ $event->id_event }}')"
+                                                class="inline-flex items-center gap-2 rounded-full bg-rose-700 px-4 py-2 text-sm font-medium text-white shadow hover:bg-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 cursor-pointer">
+                                            <i class="fas fa-trash"></i>
+                                            <span>Delete Event</span>
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
+                        @endauth
                     </div>
 
                     {{-- Meta info --}}
@@ -128,7 +159,13 @@
                             $isOrganizer = $event->id_organizer == Auth::id();
                         @endphp
 
-                        @if(!$isOrganizer && !$alreadyParticipant && !$alreadyApplied && !$event->is_full)
+                        @if(
+                            !$isOrganizer &&
+                            !$alreadyParticipant &&
+                            !$alreadyApplied &&
+                            !$event->is_full &&
+                            $event->status === 'published'
+                        )
                             <form action="{{ route('events.apply', $event) }}" method="POST" class="mt-8 flex justify-end">
                                 @csrf
                                 <button class="inline-flex items-center gap-2 rounded-full bg-green-600 px-6 py-2 text-base font-semibold text-white shadow-lg hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition">
@@ -151,4 +188,70 @@
             </article>
         </div>
     </div>
+
+    {{-- Delete form for organizers (hidden by default) --}}
+    @auth
+        @if(Auth::id() === $event->id_organizer)
+            @if($event->can_hard_delete)
+                <form id="delete-form-{{ $event->id_event }}"
+                      action="{{ route('events.destroy', $event->id_event) }}"
+                      method="POST" class="hidden">
+                    @csrf
+                    @method('DELETE')
+                </form>
+            @endif
+        @endif
+    @endauth
+
+    {{-- Delete confirmation modal (hidden by default) --}}
+    <div id="delete-modal"
+         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <div class="px-4 py-3 border-b border-gray-200">
+                <h2 class="text-base font-semibold text-gray-900">
+                    Delete event forever
+                </h2>
+            </div>
+            <div class="px-4 py-3">
+                <p class="text-sm text-gray-700">
+                    This event has no registrations, so it can be deleted without leaving traces. Continue?
+                </p>
+            </div>
+            <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
+                <button type="button"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
+                        onclick="closeDeleteModal()">
+                    Keep event
+                </button>
+                <button type="button"
+                        class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-rose-700 hover:bg-rose-800"
+                        onclick="confirmDelete()">
+                    Delete event
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- JavaScript for delete modal --}}
+    <script>
+        let deleteFormToSubmit = null;
+
+        function openDeleteModal(formId) {
+            deleteFormToSubmit = document.getElementById(formId);
+            const modal = document.getElementById('delete-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            if (modal) modal.classList.add('hidden');
+            deleteFormToSubmit = null;
+        }
+
+        function confirmDelete() {
+            if (deleteFormToSubmit) {
+                deleteFormToSubmit.submit();
+            }
+        }
+    </script>
 @endsection
