@@ -211,6 +211,11 @@ class EventController extends Controller
             abort(403, 'Completed events cannot be edited.');
         }
 
+        // Canceled events cannot be edited
+        if ($event->status === 'canceled') {
+            abort(403, 'Canceled events cannot be edited.');
+        }
+
         // All tags in the system
         $tags = Tag::all();
 
@@ -234,7 +239,11 @@ class EventController extends Controller
         if ($event->is_past) {
             abort(403, 'Completed events cannot be edited.');
         }
-
+        // Canceled events cannot be edited
+        if ($event->status === 'canceled') {
+            abort(403, 'Canceled events cannot be edited.');
+        }
+        
         // 1. Validate inputs (same as in store())
         $validated = $request->validate([
             // 'title'       => ['required', 'string', 'max:255'], --- don't edit
@@ -279,6 +288,28 @@ class EventController extends Controller
             ->with('success', 'Event updated successfully!');
     }
 
+    // Cancel an event.
+    // Only the organizer can cancel, and only published events can be canceled.
+    public function cancel(Event $event)
+    {
+        // If user is not logged in OR is not the organizer, forbid access
+        if (!Auth::check() || Auth::id() !== $event->id_organizer) {
+            abort(403, 'You are not allowed to cancel this event.');
+        }
+
+        // Only published events can be canceled
+        if ($event->status !== 'published') {
+            return back()->with('error', 'Only published events can be canceled.');
+        }
+
+        // Update the event status to canceled
+        $event->update(['status' => 'canceled']);
+
+        // Redirect back to the event details with success message
+        return back()->with('success', 'Event has been canceled successfully.');
+    }
+    
+    
     // Delete an event (OR08).
     // Only the organizer who created the event can delete it.
     public function destroy(Event $event)
@@ -286,6 +317,13 @@ class EventController extends Controller
         // If user is not logged in OR is not the organizer, forbid access
         if (!Auth::check() || Auth::id() !== $event->id_organizer) {
             abort(403, 'You are not allowed to delete this event.');
+        }
+
+        // Check if the event can be hard deleted (no activity)
+        if (!$event->can_hard_delete) {
+            return redirect()
+                ->route('events.mine')
+                ->with('error', 'This event already has activity. Please cancel it instead of deleting.');
         }
 
         // Delete the event from the database.
@@ -302,6 +340,11 @@ class EventController extends Controller
     public function apply(Event $event)
     {
         $user = Auth::user();
+
+        // Cannot apply to non-published events (including canceled)
+        if ($event->status !== 'published') {
+            return back()->with('error', 'You can only apply to published events.');
+        }
 
         // Cannot apply if event full
         if ($event->is_full) {

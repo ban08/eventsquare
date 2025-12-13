@@ -68,7 +68,7 @@
 
             {{-- Edit and Delete buttons for organizers --}}
             @auth
-                @if(Auth::id() === $event->id_organizer && $event->is_editable)
+                @if(Auth::id() === $event->id_organizer && $event->is_editable && $event->status !== 'canceled')
                     <div class="flex gap-2">
                         <a href="{{ route('events.edit', $event->id_event) }}"
                            class="inline-flex items-center px-3 py-1 text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer">

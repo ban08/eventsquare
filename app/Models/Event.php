@@ -214,4 +214,24 @@ class Event extends Model
     {
         return !$this->is_past;
     }
+
+    // Check if the event can be hard deleted.
+    // Events can only be hard deleted if they have no activity:
+    // - No applications
+    // - No participations
+    // - No invitations
+    public function getCanHardDeleteAttribute(): bool
+    {
+        // Check if there are any applications
+        $hasApplications = $this->applications()->exists();
+
+        // Check if there are any participations
+        $hasParticipations = $this->participations()->exists();
+
+        // Check if there are any invitations
+        $hasInvitations = $this->invitations()->exists();
+
+        // Event can be hard deleted only if there's no activity
+        return !$hasApplications && !$hasParticipations && !$hasInvitations;
+    }
 }

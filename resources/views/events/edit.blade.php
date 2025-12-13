@@ -242,26 +242,169 @@
                 </div>
 
                 <!-- Form Actions -->
-                <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-4">
-                    {{-- Cancel: go back to event details page without saving --}}
-                    <a
-                        href="{{ route('events.show', $event->id_event) }}"
-                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                    >
-                        Cancel
-                    </a>
+                <div class="bg-gray-50 px-6 py-4 flex justify-between items-center">
+                    <div class="flex space-x-2">
+                        {{-- Cancel Event button - only for published events --}}
+                        @if($event->status === 'published')
+                            <button type="button"
+                                    onclick="openCancelModal('cancel-form-{{ $event->id_event }}')"
+                                    class="px-4 py-2 border border-transparent rounded-lg text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors flex items-center">
+                                <i class="fas fa-ban mr-2"></i>
+                                Cancel Event
+                            </button>
+                        @endif
 
-                    {{-- Submit: save changes --}}
-                    <button
-                        type="submit"
-                        class="px-6 py-2 border border-transparent rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors flex items-center"
-                    >
-                        <i class="fas fa-save mr-2"></i>
-                        Update Event
-                    </button>
+                        {{-- Delete Event button - only if no activity --}}
+                        @if($event->can_hard_delete)
+                            <button type="button"
+                                    onclick="openDeleteModal('delete-form-{{ $event->id_event }}')"
+                                    class="px-4 py-2 border border-transparent rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors flex items-center">
+                                <i class="fas fa-trash mr-2"></i>
+                                Delete Event
+                            </button>
+                        @endif
+                    </div>
+
+                    <div class="flex space-x-4">
+                        {{-- Cancel: go back to event details page without saving --}}
+                        <a
+                            href="{{ route('events.show', $event->id_event) }}"
+                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                        >
+                            Back to Event
+                        </a>
+
+                        {{-- Submit: save changes --}}
+                        <button
+                            type="submit"
+                            class="px-6 py-2 border border-transparent rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors flex items-center"
+                        >
+                            <i class="fas fa-save mr-2"></i>
+                            Update Event
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+{{-- Cancel Event Form (hidden) --}}
+@if($event->status === 'published')
+    <form id="cancel-form-{{ $event->id_event }}"
+          action="{{ route('events.cancel', $event->id_event) }}"
+          method="POST" class="hidden">
+        @csrf
+    </form>
+@endif
+
+{{-- Delete Event Form (hidden) --}}
+@if($event->can_hard_delete)
+    <form id="delete-form-{{ $event->id_event }}"
+          action="{{ route('events.destroy', $event->id_event) }}"
+          method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
+@endif
+
+{{-- Cancel Confirmation Modal --}}
+<div id="cancel-modal"
+     class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
+        <div class="px-4 py-3 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-900">
+                Cancel Event
+            </h2>
+        </div>
+        <div class="px-4 py-3">
+            <p class="text-sm text-gray-700">
+                Are you sure you want to cancel this event? The event will remain visible but no one will be able to apply to join.
+            </p>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
+            <button type="button"
+                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
+                    onclick="closeCancelModal()">
+                Keep Event
+            </button>
+            <button type="button"
+                    class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
+                    onclick="confirmCancel()">
+                Cancel Event
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Delete Confirmation Modal --}}
+<div id="delete-modal"
+     class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
+        <div class="px-4 py-3 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-900">
+                Delete Event Forever
+            </h2>
+        </div>
+        <div class="px-4 py-3">
+            <p class="text-sm text-gray-700">
+                This event has no registrations, so it can be deleted without leaving traces. This action cannot be undone. Continue?
+            </p>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
+            <button type="button"
+                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
+                    onclick="closeDeleteModal()">
+                Keep Event
+            </button>
+            <button type="button"
+                    class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-red-600 hover:bg-red-700"
+                    onclick="confirmDelete()">
+                Delete Event
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- JavaScript for modals --}}
+<script>
+    let cancelFormToSubmit = null;
+    let deleteFormToSubmit = null;
+
+    function openCancelModal(formId) {
+        cancelFormToSubmit = document.getElementById(formId);
+        const modal = document.getElementById('cancel-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeCancelModal() {
+        const modal = document.getElementById('cancel-modal');
+        if (modal) modal.classList.add('hidden');
+        cancelFormToSubmit = null;
+    }
+
+    function confirmCancel() {
+        if (cancelFormToSubmit) {
+            cancelFormToSubmit.submit();
+        }
+    }
+
+    function openDeleteModal(formId) {
+        deleteFormToSubmit = document.getElementById(formId);
+        const modal = document.getElementById('delete-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('delete-modal');
+        if (modal) modal.classList.add('hidden');
+        deleteFormToSubmit = null;
+    }
+
+    function confirmDelete() {
+        if (deleteFormToSubmit) {
+            deleteFormToSubmit.submit();
+        }
+    }
+</script>
 @endsection

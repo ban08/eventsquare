@@ -39,15 +39,27 @@
                             </div>
                         </div>
 
-                        {{-- Organizer actions (Edit, Delete buttons) --}}
+                        {{-- Organizer actions (Edit, Cancel, Delete buttons) --}}
                         @auth
-                            @if(Auth::id() === $event->id_organizer && $event->is_editable)
+                            @if(Auth::id() === $event->id_organizer)
                                 <div class="flex gap-2">
-                                    <a href="{{ route('events.edit', $event->id_event) }}"
-                                       class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 cursor-pointer">
-                                        <i class="fas fa-edit"></i>
-                                        <span>Edit Event</span>
-                                    </a>
+                                    {{-- Edit button only for non-canceled events that are editable --}}
+                                    @if($event->status !== 'canceled' && $event->is_editable)
+                                        <a href="{{ route('events.edit', $event->id_event) }}"
+                                           class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 cursor-pointer">
+                                            <i class="fas fa-edit"></i>
+                                            <span>Edit Event</span>
+                                        </a>
+                                    @endif
+
+                                    @if($event->status === 'published')
+                                        <button type="button"
+                                                onclick="openCancelModal('cancel-form-{{ $event->id_event }}')"
+                                                class="inline-flex items-center gap-2 rounded-full bg-yellow-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-yellow-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 focus-visible:ring-offset-2 cursor-pointer">
+                                            <i class="fas fa-ban"></i>
+                                            <span>Cancel Event</span>
+                                        </button>
+                                    @endif
 
                                     @if($event->can_hard_delete)
                                         <button type="button"
@@ -189,6 +201,19 @@
         </div>
     </div>
 
+    {{-- Cancel form for organizers (hidden by default) --}}
+    @auth
+        @if(Auth::id() === $event->id_organizer)
+            @if($event->status === 'published')
+                <form id="cancel-form-{{ $event->id_event }}"
+                      action="{{ route('events.cancel', $event->id_event) }}"
+                      method="POST" class="hidden">
+                    @csrf
+                </form>
+            @endif
+        @endif
+    @endauth
+
     {{-- Delete form for organizers (hidden by default) --}}
     @auth
         @if(Auth::id() === $event->id_organizer)
@@ -203,38 +228,86 @@
         @endif
     @endauth
 
+    {{-- Cancel confirmation modal (hidden by default) --}}
+    <div id="cancel-modal"
+         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <div class="px-4 py-3 border-b border-gray-200">
+                <h2 class="text-base font-semibold text-gray-900">
+                    Cancel Event
+                </h2>
+            </div>
+            <div class="px-4 py-3">
+                <p class="text-sm text-gray-700">
+                    Are you sure you want to cancel this event? The event will remain visible but no one will be able to apply to join.
+                </p>
+            </div>
+            <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
+                <button type="button"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
+                        onclick="closeCancelModal()">
+                    Keep Event
+                </button>
+                <button type="button"
+                        class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
+                        onclick="confirmCancel()">
+                    Cancel Event
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Delete confirmation modal (hidden by default) --}}
     <div id="delete-modal"
          class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
             <div class="px-4 py-3 border-b border-gray-200">
                 <h2 class="text-base font-semibold text-gray-900">
-                    Delete event forever
+                    Delete Event Forever
                 </h2>
             </div>
             <div class="px-4 py-3">
                 <p class="text-sm text-gray-700">
-                    This event has no registrations, so it can be deleted without leaving traces. Continue?
+                    This event has no registrations, so it can be deleted without leaving traces. This action cannot be undone. Continue?
                 </p>
             </div>
             <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
                 <button type="button"
                         class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
                         onclick="closeDeleteModal()">
-                    Keep event
+                    Keep Event
                 </button>
                 <button type="button"
                         class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-rose-700 hover:bg-rose-800"
                         onclick="confirmDelete()">
-                    Delete event
+                    Delete Event
                 </button>
             </div>
         </div>
     </div>
 
-    {{-- JavaScript for delete modal --}}
+    {{-- JavaScript for modals --}}
     <script>
+        let cancelFormToSubmit = null;
         let deleteFormToSubmit = null;
+
+        function openCancelModal(formId) {
+            cancelFormToSubmit = document.getElementById(formId);
+            const modal = document.getElementById('cancel-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeCancelModal() {
+            const modal = document.getElementById('cancel-modal');
+            if (modal) modal.classList.add('hidden');
+            cancelFormToSubmit = null;
+        }
+
+        function confirmCancel() {
+            if (cancelFormToSubmit) {
+                cancelFormToSubmit.submit();
+            }
+        }
 
         function openDeleteModal(formId) {
             deleteFormToSubmit = document.getElementById(formId);
