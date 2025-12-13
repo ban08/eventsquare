@@ -181,6 +181,92 @@
                     </div>
                 </div>
 
+                <!-- Security questions -->
+                @php
+                    $oldQuestions = old('security_questions', []);
+                    $oldAnswers = old('security_answers', []);
+                    $initialCount = max(1, count($oldQuestions));
+                    $suggestions = $suggestedQuestions ?? collect();
+                    $optionsHtml = $suggestions->map(fn($q) => '<option value="'.e($q->prompt).'">'.e($q->prompt).'</option>')->implode('');
+                @endphp
+
+                <div class="space-y-4" id="security-questions-wrapper">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-900">Security questions</h3>
+                            <p class="text-xs text-gray-500">Answer at least one; you can add maximum 3 questions. Pick from suggestions.</p>
+                        </div>
+                        <button type="button"
+                                onclick="addQuestionRow()"
+                                class="inline-flex items-center rounded-md bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                            <i class="fas fa-plus mr-1"></i> Add
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 security-row">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Security Question 1 (required)</label>
+                            <select
+                                name="security_questions[]"
+                                required
+                                class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('security_questions.0') border-red-300 @enderror"
+                            >
+                                <option value="" disabled {{ empty($oldQuestions[0]) ? 'selected' : '' }}>Choose a question</option>
+                                @foreach($suggestions as $suggestion)
+                                    <option value="{{ $suggestion->prompt }}" @selected(($oldQuestions[0] ?? '') === $suggestion->prompt)>{{ $suggestion->prompt }}</option>
+                                @endforeach
+                            </select>
+                            @error('security_questions.0')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Answer 1 (required)</label>
+                            <input
+                                name="security_answers[]"
+                                type="text"
+                                required
+                                class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('security_answers.0') border-red-300 @enderror"
+                                placeholder="Type the answer you will remember"
+                                value="{{ $oldAnswers[0] ?? '' }}"
+                            >
+                            @error('security_answers.0')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    @if($initialCount > 1)
+                        @for($i = 1; $i < $initialCount && $i < 3; $i++)
+                            <div class="space-y-2 security-row">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Security Question {{ $i + 1 }}</label>
+                                    <select
+                                        name="security_questions[]"
+                                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="" disabled {{ empty($oldQuestions[$i] ?? '') ? 'selected' : '' }}>Choose a question</option>
+                                        @foreach($suggestions as $suggestion)
+                                            <option value="{{ $suggestion->prompt }}" @selected(($oldQuestions[$i] ?? '') === $suggestion->prompt)>{{ $suggestion->prompt }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Answer {{ $i + 1 }}</label>
+                                    <input
+                                        name="security_answers[]"
+                                        type="text"
+                                        class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Answer"
+                                        value="{{ $oldAnswers[$i] ?? '' }}"
+                                    >
+                                </div>
+                            </div>
+                        @endfor
+                    @endif
+                </div>
+
                 <div>
                     {{--Submit button container--}}
                     <button
@@ -219,4 +305,59 @@
         </div>
     </div>
 </div>
+{{-- allow adding up to 3 question/answer pairs --}}
+<script>
+    const maxQuestions = 3;
+    let questionCount = {{ $initialCount }};
+    const optionsHtml = `{!! $optionsHtml !!}`;
+
+    function refreshDisabledOptions() {
+        const selects = Array.from(document.querySelectorAll('select[name="security_questions[]"]'));
+        const chosen = new Set(selects.map(s => s.value).filter(Boolean).map(v => v.toLowerCase()));
+        selects.forEach(select => {
+            Array.from(select.options).forEach(opt => {
+                if (!opt.value) return;
+                const key = opt.value.toLowerCase();
+                opt.disabled = chosen.has(key) && select.value.toLowerCase() !== key;
+            });
+        });
+    }
+
+    function addQuestionRow() {
+        if (questionCount >= maxQuestions) return;
+        questionCount += 1;
+
+        const wrapper = document.getElementById('security-questions-wrapper');
+        const row = document.createElement('div');
+        row.className = 'space-y-2 security-row';
+        row.innerHTML = `
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Security Question ${questionCount}</label>
+                <select
+                    name="security_questions[]"
+                    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                    <option value="" disabled selected>Choose a question</option>
+                    ${optionsHtml}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Answer ${questionCount}</label>
+                <input
+                    name="security_answers[]"
+                    type="text"
+                    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Answer"
+                >
+            </div>
+        `;
+        wrapper.appendChild(row);
+        refreshDisabledOptions();
+    }
+
+    document.getElementById('security-questions-wrapper').addEventListener('change', refreshDisabledOptions);
+    refreshDisabledOptions();
+</script>
+
+{{-- Suggested questions --}}
 @endsection

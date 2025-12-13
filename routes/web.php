@@ -6,6 +6,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\Auth\RecoveryController;
  
 // Authentication routes (AuthController version from main)
 Route::controller(AuthController::class)->group(function () {
@@ -22,6 +23,11 @@ Route::controller(AuthController::class)->group(function () {
     Route::get('/register', 'showRegister')->name('register');
     Route::post('/register', 'register');
 });
+
+// Password recovery routes (security question flow)
+Route::get('/password/forgot', [RecoveryController::class, 'showRequest'])->name('password.request');
+Route::post('/password/forgot', [RecoveryController::class, 'showQuestion'])->name('password.question');
+Route::post('/password/reset/security', [RecoveryController::class, 'resetWithAnswer'])->name('password.reset.security');
 
 
 // Home

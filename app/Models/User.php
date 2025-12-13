@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Profile;
+use App\Models\SecurityAnswer;
 
 class User extends Authenticatable
 {
@@ -108,6 +109,12 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class, 'id_user', 'id_user');
+    }
+
+    // Each user can have one or more security questions/answers for password recovery.
+    public function securityAnswers(): HasMany
+    {
+        return $this->hasMany(SecurityAnswer::class, 'id_user', 'id_user');
     }
 
 

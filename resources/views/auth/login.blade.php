@@ -130,6 +130,10 @@
                 </div>
             </form>
 
+            <div class="mt-4 text-right">
+                <a href="{{ route('password.request') }}" class="text-sm text-indigo-600 hover:text-indigo-500">Forgot password?</a>
+            </div>
+                        
             {{--Section below the form for the "New to EventSquare?" message and registration link--}}
             <div class="mt-6">
                 {{--Used to place the text on top of a line--}}

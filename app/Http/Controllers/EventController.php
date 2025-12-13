@@ -305,8 +305,10 @@ class EventController extends Controller
         // Update the event status to canceled
         $event->update(['status' => 'canceled']);
 
-        // Redirect back to the event details with success message
-        return back()->with('success', 'Event has been canceled successfully.');
+        // Redirect to event details
+        return redirect()
+            ->route('events.show', $event->id_event)
+            ->with('success', 'Event has been canceled successfully.');
     }
     
     

@@ -25,11 +25,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller; 
 use App\Models\User;
 use App\Models\Profile;
+use App\Models\SecurityQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 // AuthController will handle register, login, logout, etc.
@@ -41,8 +43,12 @@ class AuthController extends Controller
      */
     public function showRegister()
     {
+        $suggestedQuestions = Schema::hasTable('security_question')
+            ? SecurityQuestion::orderBy('prompt')->get()
+            : collect();
+
         // Return the Blade view stored at resources/views/auth/register.blade.php
-        return view('auth.register');
+        return view('auth.register', compact('suggestedQuestions'));
     }
 
     /**
@@ -68,12 +74,45 @@ class AuthController extends Controller
             // 'location' can be null (nullable). If it's present, it must be
             // a string with max 255 chars.            
             'location' => ['nullable', 'string', 'max:255'],
+
+            'security_questions' => ['required', 'array', 'min:1'],
+            'security_questions.*' => ['required', 'string', 'min:5', 'max:255'],
+            'security_answers' => ['required', 'array', 'min:1'],
+            'security_answers.*' => ['required', 'string', 'min:3', 'max:255'],
         ]);
 
         // 2. If validation fails, throw a ValidationException with error messages
         // Laravel redirects automatically back to the form and show these errors        
         if ($validator->fails()) {
             throw ValidationException::withMessages($validator->errors()->toArray());
+        }
+
+        $rawQuestions = $request->input('security_questions', []);
+        $rawAnswers = $request->input('security_answers', []);
+        $securityPairs = [];
+        $pairCount = min(count($rawQuestions), count($rawAnswers));
+        for ($i = 0; $i < $pairCount && count($securityPairs) < 3; $i++) {
+            $q = trim((string) ($rawQuestions[$i] ?? ''));
+            $a = trim((string) ($rawAnswers[$i] ?? ''));
+            if ($q === '' || $a === '') continue;
+            $securityPairs[] = ['question' => $q, 'answer' => $a];
+        }
+
+        // Enforce unique questions (case-insensitive) to avoid duplicates
+        $uniqueQuestions = [];
+        foreach ($securityPairs as $pair) {
+            $key = mb_strtolower($pair['question']);
+            if (isset($uniqueQuestions[$key])) {
+                throw ValidationException::withMessages([
+                    'security_questions.0' => ['Security questions must be unique.'],
+                ]);
+            }
+            $uniqueQuestions[$key] = true;
+        }
+        if (empty($securityPairs)) {
+            throw ValidationException::withMessages([
+                'security_questions.0' => ['Please provide at least one security question and answer.'],
+            ]);
         }
 
         // 3. If validation passes, create a new user record in the database.
@@ -94,6 +133,16 @@ class AuthController extends Controller
         DB::table('profile')->insert([
             'id_user' => $user->id_user,
         ]);
+
+        $rows = [];
+        foreach ($securityPairs as $pair) {
+            $rows[] = [
+                'id_user' => $user->id_user,
+                'question' => $pair['question'],
+                'answer_hash' => Hash::make($pair['answer']),
+            ];
+        }
+        DB::table('security_answer')->insert($rows);
 
         // 5. Log the user in immediately after registration
         Auth::login($user);
