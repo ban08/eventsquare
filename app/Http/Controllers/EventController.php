@@ -42,13 +42,15 @@ class EventController extends Controller
             });
         }
 
+        // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)
+        // Uses search_fts tsvector column with weights: title='A', description/venue='B'
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $like = '%' . $search . '%';
-                $q->where('title', 'ILIKE', $like)
-                  ->orWhere('description', 'ILIKE', $like)
-                  ->orWhere('venue', 'ILIKE', $like);
-            })->orderBy('start_at', 'asc');
+            // Convert search terms to tsquery format with prefix matching
+            $tsquery = $this->buildTsQuery($search);
+            
+            $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery])
+                  ->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery])
+                  ->orderBy('start_at', 'asc');
         } else {
             $query->orderBy('start_at', 'asc');
         }
@@ -83,13 +85,13 @@ class EventController extends Controller
             });
         }
 
+        // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $like = '%' . $search . '%';
-                $q->where('title', 'ILIKE', $like)
-                  ->orWhere('description', 'ILIKE', $like)
-                  ->orWhere('venue', 'ILIKE', $like);
-            })->orderBy('start_at', 'asc');
+            $tsquery = $this->buildTsQuery($search);
+            
+            $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery])
+                  ->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery])
+                  ->orderBy('start_at', 'asc');
         } else {
             $query->orderBy('start_at', 'asc');
         }
@@ -408,5 +410,30 @@ class EventController extends Controller
         return back()->with('success', 'Your request to join this event was submitted!');
     }
 
-    
+    /**
+     * 3.14: Build a PostgreSQL tsquery string from user search input.
+     * 
+     * Converts user input like "python workshop" into "python:* & workshop:*"
+     * for prefix matching with the 'simple' text search configuration.
+     * Sanitizes input to prevent SQL injection via tsquery syntax.
+     *
+     * @param string $search User's search input
+     * @return string PostgreSQL tsquery-compatible string
+     */
+    private function buildTsQuery(string $search): string
+    {
+        // Split by whitespace, remove empty entries
+        $words = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY);
+        
+        // Sanitize each word: keep only alphanumeric chars, add prefix matching
+        $terms = array_map(function ($word) {
+            $clean = preg_replace('/[^a-zA-Z0-9]/', '', $word);
+            return $clean !== '' ? $clean . ':*' : null;
+        }, $words);
+        
+        // Filter out empty terms and join with AND operator
+        $terms = array_filter($terms);
+        
+        return implode(' & ', $terms) ?: '';
+    }
 }
