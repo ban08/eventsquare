@@ -28,10 +28,19 @@ class EventController extends Controller
     public function index(Request $request)
     {
         $query = Event::query()
+            ->with('tags') // Eager load tags for display (US03)
             ->where('visibility', 'public')
             ->where('status', 'published');
 
         $search = trim((string) $request->input('q', ''));
+        $tagFilter = trim((string) $request->input('tag', '')); // US03: Tag-based exploration
+
+        // US03: Filter by tag if provided
+        if ($tagFilter !== '') {
+            $query->whereHas('tags', function ($q) use ($tagFilter) {
+                $q->where('name', $tagFilter);
+            });
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -46,19 +55,33 @@ class EventController extends Controller
 
         $events = $query->paginate(10)->withQueryString();
 
+        // US03: Get all available tags for the filter UI
+        $allTags = Tag::orderBy('name')->get();
+
         return view('events.index', [
             'events' => $events,
             'search' => $search,
+            'tagFilter' => $tagFilter,
+            'allTags' => $allTags,
         ]);
     }
 
     public function searchApi(Request $request)
     {
         $query = Event::query()
+            ->with('tags') // US03: Include tags in API response
             ->where('visibility', 'public')
             ->where('status', 'published');
 
         $search = trim((string) $request->input('q', ''));
+        $tagFilter = trim((string) $request->input('tag', '')); // US03: Tag-based exploration
+
+        // US03: Filter by tag if provided
+        if ($tagFilter !== '') {
+            $query->whereHas('tags', function ($q) use ($tagFilter) {
+                $q->where('name', $tagFilter);
+            });
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -71,17 +94,21 @@ class EventController extends Controller
             $query->orderBy('start_at', 'asc');
         }
 
-        $events = $query
-            ->select([
-                'id_event as id',
-                'title',
-                'start_at as startAt',
-                'end_at as endAt',
-                'venue',
-            ])
-            ->paginate(10);
+        $events = $query->paginate(10);
 
-        return response()->json($events->items());
+        // US03: Transform response to include tag names
+        $result = $events->map(function ($event) {
+            return [
+                'id' => $event->id_event,
+                'title' => $event->title,
+                'startAt' => $event->start_at,
+                'endAt' => $event->end_at,
+                'venue' => $event->venue,
+                'tags' => $event->tags->pluck('name')->toArray(),
+            ];
+        });
+
+        return response()->json($result);
     }
 
     // Show the form to create a new event.

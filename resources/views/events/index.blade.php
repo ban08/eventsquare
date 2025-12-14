@@ -22,11 +22,40 @@
                         placeholder="Search events..."
                         class="w-full border-0 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:ring-0"
                     >
+                    {{-- US03: Preserve tag filter in search form --}}
+                    @if($tagFilter)
+                        <input type="hidden" name="tag" value="{{ $tagFilter }}">
+                    @endif
                     <button type="submit"
                             class="hidden sm:inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
                         Search
                     </button>
                 </form>
+            </div>
+
+            {{-- US03: Tag-based exploration filter --}}
+            <div class="mb-6">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-medium text-slate-600">Filter by tag:</span>
+                    <a href="{{ route('events.index', request()->only('q')) }}"
+                       class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition
+                              {{ !$tagFilter ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
+                        All
+                    </a>
+                    @foreach($allTags as $tag)
+                        <a href="{{ route('events.index', array_merge(request()->only('q'), ['tag' => $tag->name])) }}"
+                           class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition capitalize
+                                  {{ $tagFilter === $tag->name ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
+                            {{ $tag->name }}
+                        </a>
+                    @endforeach
+                </div>
+                @if($tagFilter)
+                    <p class="mt-2 text-sm text-slate-500">
+                        Showing events tagged with <strong class="capitalize">{{ $tagFilter }}</strong>.
+                        <a href="{{ route('events.index', request()->only('q')) }}" class="text-indigo-600 hover:underline">Clear filter</a>
+                    </p>
+                @endif
             </div>
 
             <div class="mt-8" id="event-list-wrapper">
@@ -46,9 +75,14 @@
                                     <span class="truncate text-right ml-2">{{ $event->venue }}</span>
                                 </div>
 
+                                {{-- US03: Display event tags --}}
                                 <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">Public</span>
-                                    <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600">Upcoming</span>
+                                    @forelse($event->tags as $tag)
+                                        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600 capitalize">{{ $tag->name }}</span>
+                                    @empty
+                                        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600">Upcoming</span>
+                                    @endforelse
                                 </div>
                             </a>
                         </li>
@@ -69,6 +103,9 @@
     <script type="module">
         const input = document.getElementById('event-search-input');
         const list = document.getElementById('event-list');
+        // US03: Get current tag filter from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentTag = urlParams.get('tag') || '';
 
         if (input && list) {
             let controller = null;
@@ -105,12 +142,18 @@
                         <span class="truncate text-right ml-2">${event.venue ?? ''}</span>
                     `;
 
+                    // US03: Render event tags dynamically
                     const tags = document.createElement('div');
                     tags.className = 'mt-3 flex flex-wrap gap-2 text-[11px]';
-                    tags.innerHTML = `
-                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">Public</span>
-                        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600">Upcoming</span>
-                    `;
+                    let tagsHtml = '<span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">Public</span>';
+                    if (event.tags && event.tags.length > 0) {
+                        tagsHtml += event.tags.map(tag => 
+                            `<span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600 capitalize">${tag}</span>`
+                        ).join('');
+                    } else {
+                        tagsHtml += '<span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600">Upcoming</span>';
+                    }
+                    tags.innerHTML = tagsHtml;
 
                     link.appendChild(imgPlaceholder);
                     link.appendChild(title);
@@ -128,6 +171,8 @@
 
                 const params = new URLSearchParams();
                 if (query) params.set('q', query);
+                // US03: Include tag filter in AJAX requests
+                if (currentTag) params.set('tag', currentTag);
 
                 try {
                     const response = await fetch(`/api/events?${params.toString()}`, {
