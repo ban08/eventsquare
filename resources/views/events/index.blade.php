@@ -66,8 +66,21 @@
                                class="group flex h-full flex-col rounded-3xl bg-white/95 p-4 shadow-[0_10px_30px_rgba(88,80,236,0.18)] transition hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(88,80,236,0.28)]">
                                 <div class="mb-3 flex-1 rounded-2xl border border-dashed border-slate-200 bg-slate-50"></div>
 
-                                <div class="mt-1 text-sm font-semibold text-slate-900 group-hover:text-indigo-700 truncate">
-                                    {{ $event->title }}
+                                {{-- Title + status badge on same line  --}}
+                                <div class="mt-1 flex items-center justify-between gap-2">
+                                    <span class="text-sm font-semibold text-slate-900 group-hover:text-indigo-700 truncate">
+                                        {{ $event->title }}
+                                    </span>
+                                    <span class="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold
+                                        @if($event->effective_status === 'published') bg-green-100 text-green-700
+                                        @elseif($event->effective_status === 'completed') bg-blue-100 text-blue-700
+                                        @elseif($event->effective_status === 'canceled') bg-red-100 text-red-700
+                                        @elseif($event->effective_status === 'draft') bg-yellow-100 text-yellow-700
+                                        @else bg-gray-100 text-gray-700
+                                        @endif">
+                                        <i class="fas fa-clock"></i>
+                                        {{ ucfirst($event->effective_status) }}
+                                    </span>
                                 </div>
 
                                 <div class="mt-1 flex items-center justify-between text-xs text-slate-500">
