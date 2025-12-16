@@ -27,13 +27,20 @@ class EventController extends Controller
         }
 
         $search = trim((string) $request->input('q', ''));
-        $tagFilter = trim((string) $request->input('tag', '')); // US03: Tag-based exploration
+        $tagFilters = $request->input('tags', []); // US03: Multiple tag-based exploration
+        
+        // Ensure tagFilters is always an array
+        if (!is_array($tagFilters)) {
+            $tagFilters = $tagFilters ? [$tagFilters] : [];
+        }
 
-        // US03: Filter by tag if provided
-        if ($tagFilter !== '') {
-            $query->whereHas('tags', function ($q) use ($tagFilter) {
-                $q->where('name', $tagFilter);
-            });
+        // US03: Filter by tags if provided (events must have ALL selected tags)
+        if (!empty($tagFilters)) {
+            foreach ($tagFilters as $tagName) {
+                $query->whereHas('tags', function ($q) use ($tagName) {
+                    $q->where('name', $tagName);
+                });
+            }
         }
 
         // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)
@@ -57,7 +64,7 @@ class EventController extends Controller
         return view('events.index', [
             'events' => $events,
             'search' => $search,
-            'tagFilter' => $tagFilter,
+            'tagFilters' => $tagFilters,
             'allTags' => $allTags,
         ]);
     }
@@ -70,13 +77,20 @@ class EventController extends Controller
             ->where('status', 'published');
 
         $search = trim((string) $request->input('q', ''));
-        $tagFilter = trim((string) $request->input('tag', '')); // US03: Tag-based exploration
+        $tagFilters = $request->input('tags', []); // US03: Multiple tag-based exploration
+        
+        // Ensure tagFilters is always an array
+        if (!is_array($tagFilters)) {
+            $tagFilters = $tagFilters ? [$tagFilters] : [];
+        }
 
-        // US03: Filter by tag if provided
-        if ($tagFilter !== '') {
-            $query->whereHas('tags', function ($q) use ($tagFilter) {
-                $q->where('name', $tagFilter);
-            });
+        // US03: Filter by tags if provided (events must have ALL selected tags)
+        if (!empty($tagFilters)) {
+            foreach ($tagFilters as $tagName) {
+                $query->whereHas('tags', function ($q) use ($tagName) {
+                    $q->where('name', $tagName);
+                });
+            }
         }
 
         // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)

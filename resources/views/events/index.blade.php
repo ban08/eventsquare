@@ -22,10 +22,10 @@
                         placeholder="Search events..."
                         class="w-full border-0 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:ring-0"
                     >
-                    {{-- US03: Preserve tag filter in search form --}}
-                    @if($tagFilter)
-                        <input type="hidden" name="tag" value="{{ $tagFilter }}">
-                    @endif
+                    {{-- US03: Preserve tag filters in search form --}}
+                    @foreach($tagFilters as $tagName)
+                        <input type="hidden" name="tags[]" value="{{ $tagName }}">
+                    @endforeach
                     <button type="submit"
                             class="hidden sm:inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
                         Search
@@ -33,27 +33,46 @@
                 </form>
             </div>
 
-            {{-- US03: Tag-based exploration filter --}}
+            {{-- US03: Tag-based exploration filter (multi-select) --}}
             <div class="mb-6">
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-sm font-medium text-slate-600">Filter by tag:</span>
+                    <span class="text-sm font-medium text-slate-600">Filter by tags:</span>
                     <a href="{{ route('events.index', request()->only('q')) }}"
                        class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition
-                              {{ !$tagFilter ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
+                              {{ empty($tagFilters) ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
                         All
                     </a>
                     @foreach($allTags as $tag)
-                        <a href="{{ route('events.index', array_merge(request()->only('q'), ['tag' => $tag->name])) }}"
-                           class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition capitalize
-                                  {{ $tagFilter === $tag->name ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
+                        @php
+                            $isSelected = in_array($tag->name, $tagFilters);
+                            // Build new tags array: toggle current tag
+                            if ($isSelected) {
+                                $newTags = array_values(array_diff($tagFilters, [$tag->name]));
+                            } else {
+                                $newTags = array_merge($tagFilters, [$tag->name]);
+                            }
+                            $params = request()->only('q');
+                            if (!empty($newTags)) {
+                                $params['tags'] = $newTags;
+                            }
+                        @endphp
+                        <a href="{{ route('events.index', $params) }}"
+                           class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition capitalize
+                                  {{ $isSelected ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
+                            @if($isSelected)
+                                <i class="fas fa-check text-[10px]"></i>
+                            @endif
                             {{ $tag->name }}
                         </a>
                     @endforeach
                 </div>
-                @if($tagFilter)
+                @if(!empty($tagFilters))
                     <p class="mt-2 text-sm text-slate-500">
-                        Showing events tagged with <strong class="capitalize">{{ $tagFilter }}</strong>.
-                        <a href="{{ route('events.index', request()->only('q')) }}" class="text-indigo-600 hover:underline">Clear filter</a>
+                        Showing events with tags: 
+                        @foreach($tagFilters as $tagName)
+                            <strong class="capitalize">{{ $tagName }}</strong>@if(!$loop->last), @endif
+                        @endforeach
+                        <a href="{{ route('events.index', request()->only('q')) }}" class="text-indigo-600 hover:underline ml-1">Clear all</a>
                     </p>
                 @endif
             </div>
@@ -71,7 +90,7 @@
                                     <span class="text-sm font-semibold text-slate-900 group-hover:text-indigo-700 truncate">
                                         {{ $event->title }}
                                     </span>
-                                    <span class="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold
+                                    <span class="shrink-0 inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold
                                         @if($event->effective_status === 'published') bg-green-100 text-green-700
                                         @elseif($event->effective_status === 'completed') bg-blue-100 text-blue-700
                                         @elseif($event->effective_status === 'canceled') bg-red-100 text-red-700
@@ -116,9 +135,9 @@
     <script type="module">
         const input = document.getElementById('event-search-input');
         const list = document.getElementById('event-list');
-        // US03: Get current tag filter from URL
+        // US03: Get current tag filters from URL (multiple tags)
         const urlParams = new URLSearchParams(window.location.search);
-        const currentTag = urlParams.get('tag') || '';
+        const currentTags = urlParams.getAll('tags[]');
 
         if (input && list) {
             let controller = null;
@@ -184,8 +203,8 @@
 
                 const params = new URLSearchParams();
                 if (query) params.set('q', query);
-                // US03: Include tag filter in AJAX requests
-                if (currentTag) params.set('tag', currentTag);
+                // US03: Include all tag filters in AJAX requests
+                currentTags.forEach(tag => params.append('tags[]', tag));
 
                 try {
                     const response = await fetch(`/api/events?${params.toString()}`, {
