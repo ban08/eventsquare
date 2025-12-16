@@ -6,9 +6,9 @@
 <div class="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-indigo-50 via-slate-50 to-purple-50 py-12">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="mb-6 flex items-center justify-between">
-            <a href="{{ route('home') }}" class="inline-flex items-center text-sm text-slate-500 hover:text-indigo-600">
+            <a href="{{ route('events.index') }}" class="inline-flex items-center text-sm text-slate-500 hover:text-indigo-600">
                 <i class="fas fa-arrow-left mr-2"></i>
-                Back home
+                Back to events
             </a>
             <div class="flex items-center gap-2 text-xs font-medium text-slate-600">
                 <span class="inline-flex items-center gap-1 rounded-full bg-white border border-indigo-100 px-3 py-1 shadow-sm">

@@ -43,12 +43,12 @@
 
             <div class="mt-6 flex gap-3">
                 <a href="{{ route('admin.users.edit', $user) }}"
-                   class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white">
-                    Edit
+                   class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                    <i class="fas fa-edit mr-2"></i>Edit
                 </a>
                 <a href="{{ route('admin.users.index') }}"
-                   class="inline-flex items-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
-                    Back to list
+                   class="inline-flex items-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to list
                 </a>
             </div>
         </div>

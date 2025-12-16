@@ -48,14 +48,91 @@
             <div>
                 <label class="block text-sm font-medium text-slate-700">Status</label>
                 <select name="status" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                    @foreach(['active','blocked','deleted'] as $status)
+                    @foreach(['active','blocked'] as $status)
                         <option value="{{ $status }}" @selected(old('status', $user->status) === $status)>{{ $status }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <button class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Save</button>
+            <div class="flex gap-3">
+                <button class="inline-flex items-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                    <i class="fas fa-save mr-2"></i>Save
+                </button>
+                {{-- AD06: Delete user button --}}
+                <button type="button"
+                        onclick="openDeleteUserModal()"
+                        class="inline-flex items-center rounded-full bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800">
+                    <i class="fas fa-trash mr-2"></i>Delete User
+                </button>
+                <a href="{{ route('admin.users.show', $user) }}"
+                   class="inline-flex items-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <i class="fas fa-arrow-left mr-2"></i>Back
+                </a>
+            </div>
         </form>
     </div>
 </div>
+
+{{-- AD06: Delete user form (hidden) --}}
+<form id="delete-user-form-{{ $user->id_user }}"
+      action="{{ route('admin.users.destroy', $user) }}"
+      method="POST" class="hidden">
+    @csrf
+    @method('DELETE')
+</form>
+
+{{-- AD06: Delete user confirmation modal --}}
+<div id="delete-user-modal"
+     class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
+        <div class="px-4 py-3 border-b border-rose-200 bg-rose-50">
+            <h2 class="text-base font-semibold text-rose-900">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Delete User Account
+            </h2>
+        </div>
+        <div class="px-4 py-3">
+            <p class="text-sm text-gray-700">
+                <strong>Warning:</strong> You are about to permanently delete this user account. This action cannot be undone and will remove:
+            </p>
+            <ul class="text-sm text-gray-600 mt-2 ml-4 list-disc">
+                <li>User profile and personal data</li>
+                <li>All participations and applications</li>
+                <li>All invitations sent to this user</li>
+            </ul>
+            <p class="text-sm text-gray-700 mt-3">
+                User: <strong>{{ $user->name }}</strong> ({{ $user->email }})
+            </p>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
+            <button type="button"
+                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
+                    onclick="closeDeleteUserModal()">
+                Cancel
+            </button>
+            <button type="button"
+                    class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-rose-700 hover:bg-rose-800"
+                    onclick="confirmDeleteUser()">
+                <i class="fas fa-trash mr-1"></i>Delete Permanently
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- JavaScript for delete modal --}}
+<script>
+    function openDeleteUserModal() {
+        const modal = document.getElementById('delete-user-modal');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDeleteUserModal() {
+        const modal = document.getElementById('delete-user-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    function confirmDeleteUser() {
+        const form = document.getElementById('delete-user-form-{{ $user->id_user }}');
+        if (form) form.submit();
+    }
+</script>
 @endsection

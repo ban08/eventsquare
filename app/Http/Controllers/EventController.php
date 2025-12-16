@@ -3,34 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Admin;
+use App\Models\AdminAction;
+use App\Models\AdminEventAction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
 use App\Models\Tag;
 use Carbon\Carbon;
 
 class EventController extends Controller
 {
-        public function home()
-    {
-        $events = Event::query()
-            ->where('visibility', 'public')
-            ->where('status', 'published')
-            ->where('start_at', '>=', now())
-            ->orderBy('start_at')
-            ->limit(6)
-            ->get();
-
-        return view('home', [
-            'events' => $events,
-        ]);
-    }
-
     public function index(Request $request)
     {
         $query = Event::query()
-            ->with('tags') // Eager load tags for display (US03)
-            ->where('visibility', 'public')
-            ->where('status', 'published');
+            ->with('tags'); // Eager load tags for display (US03)
+
+        // AD01: Admins can browse ALL events, regular users only see public/published
+        if (!Gate::allows('admin')) {
+            $query->where('visibility', 'public')
+                  ->where('status', 'published');
+        }
 
         $search = trim((string) $request->input('q', ''));
         $tagFilter = trim((string) $request->input('tag', '')); // US03: Tag-based exploration
@@ -122,6 +116,12 @@ class EventController extends Controller
             return redirect()->route('login');
         }
 
+        // BR13: Admins cannot create events
+        if (Gate::allows('admin')) {
+            return redirect()->route('events.index')
+                ->with('error', 'Administrators cannot create events.');
+        }
+
         // Get all tags from the database so we can show them in the form.
         $tags = Tag::all();
 
@@ -137,6 +137,12 @@ class EventController extends Controller
         // Make sure only logged-in users can create events.
         if (!Auth::check()) {
             return redirect()->route('login');
+        }
+
+        // BR13: Admins cannot create events
+        if (Gate::allows('admin')) {
+            return redirect()->route('events.index')
+                ->with('error', 'Administrators cannot create events.');
         }
 
         // 1. Validate the form data
@@ -341,28 +347,64 @@ class EventController extends Controller
     }
     
     
-    // Delete an event (OR08).
-    // Only the organizer who created the event can delete it.
+    // Delete an event (OR08 for organizers, AD03 for admins).
+    // Organizers can only delete their own events with no activity.
+    // Admins can delete any event to remove harmful content.
     public function destroy(Event $event)
     {
-        // If user is not logged in OR is not the organizer, forbid access
-        if (!Auth::check() || Auth::id() !== $event->id_organizer) {
+        $isAdmin = Gate::allows('admin');
+        $isOrganizer = Auth::check() && Auth::id() === $event->id_organizer;
+
+        // Must be either the organizer or an admin
+        if (!$isAdmin && !$isOrganizer) {
             abort(403, 'You are not allowed to delete this event.');
         }
 
-        // Check if the event can be hard deleted (no activity)
-        if (!$event->can_hard_delete) {
+        // For organizers: check if the event can be hard deleted (no activity)
+        // Admins can delete any event regardless of activity (AD03)
+        if (!$isAdmin && !$event->can_hard_delete) {
             return redirect()
                 ->route('events.mine')
                 ->with('error', 'This event already has activity. Please cancel it instead of deleting.');
         }
 
-        // Delete the event from the database.
-        // If the database is set up with foreign key cascading,
-        // related rows will be removed automatically.
-        $event->delete();
+        // Store event info for logging before deletion
+        $eventTitle = $event->title;
+        $eventId = $event->id_event;
 
-        // After deleting, send the user back to "My events" page with a success message.
+        // Use transaction for admin actions to ensure audit log is created
+        DB::transaction(function () use ($event, $isAdmin, $eventTitle, $eventId) {
+            // AD03: Log admin action if admin is deleting
+            if ($isAdmin) {
+                $admin = Admin::where('email', Auth::user()->email)->first();
+                if ($admin) {
+                    $action = AdminAction::create([
+                        'id_admin'   => $admin->id_admin,
+                        'details'    => 'Deleted event: ' . $eventTitle . ' (ID: ' . $eventId . ')',
+                        'created_at' => now(),
+                    ]);
+
+                    AdminEventAction::create([
+                        'id_action'    => $action->id_action,
+                        'action'       => 'delete event',
+                        'target_event' => $eventId,
+                    ]);
+                }
+            }
+
+            // Delete the event from the database.
+            // Foreign key cascading handles related rows.
+            $event->delete();
+        });
+
+        // Redirect based on who deleted
+        if ($isAdmin) {
+            return redirect()
+                ->route('events.index')
+                ->with('success', 'Event "' . $eventTitle . '" deleted successfully by administrator.');
+        }
+
+        // After deleting, send the organizer back to "My events" page with a success message.
         return redirect()
             ->route('events.mine')
             ->with('success', 'Event deleted successfully!');
@@ -373,6 +415,11 @@ class EventController extends Controller
     public function apply(Event $event)
     {
         $user = Auth::user(); //user autenticado
+
+        // BR13: Admins cannot participate in events
+        if (Gate::allows('admin')) {
+            return back()->with('error', 'Administrators cannot participate in events.');
+        }
 
         // Cannot apply to non-published events (including canceled)
         if ($event->status !== 'published') {

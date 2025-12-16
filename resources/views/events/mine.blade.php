@@ -35,11 +35,14 @@
                     <i class="fas fa-calendar-plus text-4xl text-slate-300 mb-4"></i>
                     <h3 class="text-lg font-medium text-slate-900 mb-2">No organized events</h3>
                     <p class="text-sm text-slate-500 mb-4">You haven't organized any events yet.</p>
+                    {{-- BR13: Admins cannot create events --}}
+                    @cannot('admin')
                     <a href="{{ route('events.create') }}"
                        class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
                         <i class="fas fa-plus"></i>
                         Create Your First Event
                     </a>
+                    @endcannot
                 </div>
             @else
                 <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

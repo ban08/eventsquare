@@ -56,7 +56,7 @@ class AdminUserController extends Controller
             'email'    => ['required', 'email', 'max:255', 'unique:user,email'],
             'location' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
-            'status'   => ['required', 'in:active,blocked,deleted'],
+            'status'   => ['required', 'in:active,blocked'],
             'photo'    => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -122,7 +122,7 @@ class AdminUserController extends Controller
             'email'    => ['required', 'email', 'max:255', 'unique:user,email,' . $user->id_user . ',id_user'],
             'location' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:8'],
-            'status'   => ['required', 'in:active,blocked,deleted'],
+            'status'   => ['required', 'in:active,blocked'],
             'photo'    => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -167,5 +167,54 @@ class AdminUserController extends Controller
         return redirect()
             ->route('admin.users.show', $user)
             ->with('success', 'User atualizado com sucesso.');
+    }
+
+    /**
+     * AD06: Delete a user account permanently.
+     * This is a hard delete - the user and all related data will be removed.
+     */
+    public function destroy(User $user)
+    {
+        $currentUser = Auth::user();
+        $admin = Admin::where('email', $currentUser->email)->first();
+
+        // Prevent admin from deleting themselves
+        if ($user->email === $currentUser->email) {
+            return redirect()
+                ->route('admin.users.show', $user)
+                ->with('error', 'You cannot delete your own account.');
+        }
+
+        // Store user info for logging before deletion
+        $userEmail = $user->email;
+        $userName = $user->name;
+        $userId = $user->id_user;
+
+        DB::transaction(function () use ($user, $admin, $userEmail, $userId) {
+            // Log admin action before deleting user
+            if ($admin) {
+                $action = AdminAction::create([
+                    'id_admin'   => $admin->id_admin,
+                    'details'    => 'Deleted user account: ' . $userEmail . ' (ID: ' . $userId . ')',
+                    'created_at' => now(),
+                ]);
+
+                AdminUserAction::create([
+                    'id_action'   => $action->id_action,
+                    'action'      => 'delete user account',
+                    'target_user' => $userId,
+                ]);
+            }
+
+            // Delete profile first (R03)
+            DB::table('profile')->where('id_user', $user->id_user)->delete();
+
+            // Delete the user - cascading will handle related records
+            $user->delete();
+        });
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with('success', 'User "' . $userName . '" (' . $userEmail . ') deleted permanently.');
     }
 }

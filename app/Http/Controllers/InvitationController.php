@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use App\Models\Event;
 use App\Models\Invitation;
 use App\Models\User;
@@ -107,6 +108,12 @@ class InvitationController extends Controller
         if (!Auth::check() || Auth::id() !== $invitation->id_invitee) {
             abort(403, 'You are not the invitee.');
         }
+
+        // BR13: Admins cannot participate in events
+        if (Gate::allows('admin')) {
+            return back()->with('error', 'Administrators cannot participate in events.');
+        }
+
         if ($invitation->status !== 'pending') {
             return back()->withErrors(['invitation' => 'Invitation already responded.']);
         }

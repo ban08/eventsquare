@@ -113,14 +113,22 @@
                             @endcan
                         </span>
 
+                        {{-- BR13: Admins don't have personal events --}}
+                        @cannot('admin')
                         <a href="{{ route('events.mine') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
                             <i class="fas fa-calendar-alt mr-1 text-[11px]"></i>
                             <span>My events</span>
                         </a>
+                        @endcannot
+                        {{-- BR13: Admins cannot create events --}}
+                        @cannot('admin')
                         <a href="{{ url('/events/create') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
                             <i class="fas fa-plus mr-1 text-[11px]"></i>
                             <span>Create event</span>
                         </a>
+                        @endcannot
+                        {{-- BR13: Admins cannot participate, so no invites --}}
+                        @cannot('admin')
                         <a href="{{ route('invitations.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
                             <i class="fas fa-envelope-open-text mr-1 text-[12px] text-indigo-600"></i>
                             <span class="flex items-center gap-1">Invites
@@ -129,6 +137,7 @@
                                 @endif
                             </span>
                         </a>
+                        @endcannot
 
                         <form action="{{ url('/logout') }}" method="POST" class="inline">
                             @csrf

@@ -6,10 +6,10 @@
     <div class="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-50 to-slate-100 py-12">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            <a href="{{ route('home') }}"
+            <a href="{{ route('events.index') }}"
                class="inline-flex items-center text-sm text-slate-500 hover:text-indigo-600 mb-4">
                 <i class="fas fa-arrow-left mr-2"></i>
-                Back to home
+                Back to events
             </a>
 
             <div class="overflow-hidden rounded-3xl bg-white/95 shadow-[0_10px_30px_rgba(15,23,42,0.12)]">

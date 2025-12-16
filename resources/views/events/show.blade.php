@@ -72,6 +72,18 @@
                                 </div>
                             @endif
                         @endauth
+
+                        {{-- AD03: Admin delete button (separate from organizer actions) --}}
+                        @can('admin')
+                            <div class="flex gap-2">
+                                <button type="button"
+                                        onclick="openAdminDeleteModal('admin-delete-form-{{ $event->id_event }}')"
+                                        class="inline-flex items-center gap-2 rounded-full bg-rose-700 px-4 py-2 text-sm font-medium text-white shadow hover:bg-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 cursor-pointer">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Admin Delete</span>
+                                </button>
+                            </div>
+                        @endcan
                     </div>
 
                     {{-- Meta info --}}
@@ -191,15 +203,17 @@
                         @endif
                     @endauth
 
-                    {{-- Apply to event (RU09) --}}
+                    {{-- Apply to event (RU09) - BR13: Admins cannot participate --}}
                     @auth
                         @php
                             $alreadyParticipant = $event->participants->contains(Auth::id());
                             $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id());
                             $isOrganizer = $event->id_organizer == Auth::id();
+                            $isAdmin = Gate::allows('admin');
                         @endphp
 
                         @if(
+                            !$isAdmin &&
                             !$isOrganizer &&
                             !$alreadyParticipant &&
                             !$alreadyApplied &&
@@ -255,6 +269,16 @@
             @endif
         @endif
     @endauth
+
+    {{-- AD03: Delete form for admins (hidden by default) --}}
+    @can('admin')
+        <form id="admin-delete-form-{{ $event->id_event }}"
+              action="{{ route('events.destroy', $event->id_event) }}"
+              method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endcan
 
     {{-- Cancel confirmation modal (hidden by default) --}}
     <div id="cancel-modal"
@@ -314,6 +338,38 @@
         </div>
     </div>
 
+    {{-- AD03: Admin delete confirmation modal --}}
+    <div id="admin-delete-modal"
+         class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <div class="px-4 py-3 border-b border-rose-200 bg-rose-50">
+                <h2 class="text-base font-semibold text-rose-900">
+                    <i class="fas fa-shield-alt mr-2"></i>Admin: Delete Event
+                </h2>
+            </div>
+            <div class="px-4 py-3">
+                <p class="text-sm text-gray-700">
+                    <strong>Warning:</strong> You are about to permanently delete this event as an administrator. This action will be logged and cannot be undone.
+                </p>
+                <p class="text-sm text-gray-500 mt-2">
+                    Event: <strong>{{ $event->title }}</strong>
+                </p>
+            </div>
+            <div class="px-4 py-3 bg-gray-50 flex justify-end space-x-2">
+                <button type="button"
+                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-100"
+                        onclick="closeAdminDeleteModal()">
+                    Cancel
+                </button>
+                <button type="button"
+                        class="px-3 py-1.5 text-sm border border-transparent rounded-md text-white bg-rose-700 hover:bg-rose-800"
+                        onclick="confirmAdminDelete()">
+                    <i class="fas fa-trash mr-1"></i>Delete Event
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- JavaScript for modals --}}
     <script>
         let cancelFormToSubmit = null;
@@ -352,6 +408,27 @@
         function confirmDelete() {
             if (deleteFormToSubmit) {
                 deleteFormToSubmit.submit();
+            }
+        }
+
+        // AD03: Admin delete modal functions
+        let adminDeleteFormToSubmit = null;
+
+        function openAdminDeleteModal(formId) {
+            adminDeleteFormToSubmit = document.getElementById(formId);
+            const modal = document.getElementById('admin-delete-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeAdminDeleteModal() {
+            const modal = document.getElementById('admin-delete-modal');
+            if (modal) modal.classList.add('hidden');
+            adminDeleteFormToSubmit = null;
+        }
+
+        function confirmAdminDelete() {
+            if (adminDeleteFormToSubmit) {
+                adminDeleteFormToSubmit.submit();
             }
         }
     </script>

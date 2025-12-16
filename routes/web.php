@@ -30,8 +30,8 @@ Route::post('/password/forgot', [RecoveryController::class, 'showQuestion'])->na
 Route::post('/password/reset/security', [RecoveryController::class, 'resetWithAnswer'])->name('password.reset.security');
 
 
-// Home
-Route::redirect('/', '/login');
+// Home - redirect to events browse page (main landing)
+Route::redirect('/', '/events');
 
 
 // Admin user management (AD07, if required by ER/EBD)
@@ -45,13 +45,12 @@ Route::middleware(['auth', 'can:admin'])
         Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('users.show');
         Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy'); // AD06
     });
 
 // Event management routes 
 Route::controller(EventController::class)->group(function () {
-    Route::get('/', 'home')->name('home'); // R200
-
-    Route::get('/events', 'index')->name('events.index'); // R201
+    Route::get('/events', 'index')->name('events.index'); // R201 - Main landing page
 
     // Show the "create event" form.
     // Only logged-in users can access this page.    
