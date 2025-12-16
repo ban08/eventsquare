@@ -144,7 +144,14 @@
                     <div class="mt-10 border-t border-slate-200 pt-8">
                         <h3 class="text-base font-semibold text-indigo-700 mb-4">Invitations</h3>
 
-                            {{-- Organizer invite form --}}
+                            {{-- OR03: Organizer invite form - only for active events --}}
+                            @php $effectiveStatus = $event->effective_status; @endphp
+                            @if(in_array($effectiveStatus, ['canceled', 'completed', 'deleted']))
+                                <div class="mb-6 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                                    <i class="fas fa-ban mr-2"></i>
+                                    Cannot send invitations to {{ $effectiveStatus }} events.
+                                </div>
+                            @else
                                 <form action="{{ route('invitations.invite', $event->id_event) }}" method="POST" class="mb-6 flex items-end gap-3">
                                     @csrf
                                     <div>
@@ -159,6 +166,7 @@
                                         <span>Invite</span>
                                     </button>
                                 </form>
+                            @endif
 
                             {{-- List invitations (pending + responded) --}}
                             <div class="space-y-3">

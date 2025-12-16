@@ -23,6 +23,13 @@ class InvitationController extends Controller
             abort(403, 'Only the organizer can invite users.');
         }
 
+        // OR03: Cannot invite to canceled, completed, or deleted events
+        // Use effective_status to catch events that are past their end date
+        $effectiveStatus = $event->effective_status;
+        if (in_array($effectiveStatus, ['canceled', 'completed', 'deleted'])) {
+            return back()->withErrors(['invitee_email' => 'Cannot send invitations to ' . $effectiveStatus . ' events.']);
+        }
+
         // Validate email instead of raw user ID
         $validated = $request->validate([
             'invitee_email' => ['required', 'email', 'exists:user,email'],
@@ -112,6 +119,19 @@ class InvitationController extends Controller
         // BR13: Admins cannot participate in events
         if (Gate::allows('admin')) {
             return back()->with('error', 'Administrators cannot participate in events.');
+        }
+
+        // Load the event to check its status
+        $event = Event::find($invitation->id_event);
+        if (!$event) {
+            return back()->withErrors(['invitation' => 'Event no longer exists.']);
+        }
+
+        // Cannot accept invitation to canceled, completed, or deleted events
+        // Use effective_status to catch events that are past their end date
+        $effectiveStatus = $event->effective_status;
+        if (in_array($effectiveStatus, ['canceled', 'completed', 'deleted'])) {
+            return back()->withErrors(['invitation' => 'Cannot join a ' . $effectiveStatus . ' event.']);
         }
 
         if ($invitation->status !== 'pending') {

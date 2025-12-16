@@ -28,21 +28,15 @@
     {{-- Image placeholder area --}}
     <div class="mb-3 flex-1 rounded-2xl border border-dashed border-slate-200 bg-slate-50"></div>
 
-      {{-- Status badges --}}
-    <div class="absolute top-2 right-2 flex flex-col gap-1">
-        <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $statusColor }} shadow">
+    {{-- Event title + status badge on same line --}}
+    <div class="mt-1 flex items-center justify-between gap-2">
+        <span class="text-sm font-semibold text-slate-900 group-hover:text-indigo-700 truncate">
+            {{ $event->title }}
+        </span>
+        <span class="shrink-0 inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold {{ $statusColor }}">
+            <i class="fas fa-clock"></i>
             {{ ucfirst($effectiveStatus) }}
         </span>
-        @if($showTimeStatus)
-        <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $timeStatusColor }} shadow">
-            {{ $timeStatus }}
-        </span>
-        @endif
-    </div>
-
-    {{-- Event title --}}
-    <div class="mt-1 text-sm font-semibold text-slate-900 group-hover:text-indigo-700 truncate pr-20">
-        {{ $event->title }}
     </div>
 
     {{-- Event meta information --}}

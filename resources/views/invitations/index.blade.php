@@ -37,8 +37,13 @@
             @else
                 <div class="grid gap-5 md:grid-cols-2">
                     @foreach($pending as $inv)
+                        @php
+                            // Use effective_status to catch events that are past their end date
+                            $eventStatus = $inv->event->effective_status ?? 'unknown';
+                            $isEventInvalid = in_array($eventStatus, ['canceled', 'completed', 'deleted']);
+                        @endphp
                         <div class="group rounded-2xl bg-white shadow-[0_6px_18px_rgba(79,70,229,0.12)] border border-indigo-100 hover:shadow-[0_10px_28px_rgba(79,70,229,0.18)] transition overflow-hidden flex flex-col">
-                            <div class="h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                            <div class="h-1 {{ $isEventInvalid ? 'bg-gradient-to-r from-gray-400 to-gray-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500' }}"></div>
                             <div class="px-6 pt-6 pb-5 flex-1 flex flex-col justify-between">
                                 <div class="space-y-2">
                                     <h3 class="text-base font-semibold text-slate-800 line-clamp-1">
@@ -49,25 +54,38 @@
                                             <i class="fas fa-clock"></i>
                                             <span>Sent {{ $inv->sent_at?->diffForHumans() }}</span>
                                         </span>
-                                        <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">
-                                            <i class="fas fa-hourglass-half"></i>
-                                            <span>Pending</span>
-                                        </span>
+                                        @if($isEventInvalid)
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-red-700">
+                                                <i class="fas fa-ban"></i>
+                                                <span>Event {{ ucfirst($eventStatus) }}</span>
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">
+                                                <i class="fas fa-hourglass-half"></i>
+                                                <span>Pending</span>
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="mt-5 flex gap-3 justify-end">
-                                    <form method="POST" action="{{ route('invitations.accept', $inv->id_invitation) }}">
-                                        @csrf
-                                        <button class="inline-flex items-center gap-1 rounded-full bg-green-600 px-4 py-1.5 text-white text-xs font-semibold shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition">
-                                            <i class="fas fa-check"></i><span>Accept</span>
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ route('invitations.decline', $inv->id_invitation) }}">
-                                        @csrf
-                                        <button class="inline-flex items-center gap-1 rounded-full bg-red-600 px-4 py-1.5 text-white text-xs font-semibold shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition">
-                                            <i class="fas fa-times"></i><span>Decline</span>
-                                        </button>
-                                    </form>
+                                    @if($isEventInvalid)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-4 py-1.5 text-gray-500 text-xs font-semibold">
+                                            <i class="fas fa-ban"></i><span>Cannot join {{ $eventStatus }} event</span>
+                                        </span>
+                                    @else
+                                        <form method="POST" action="{{ route('invitations.accept', $inv->id_invitation) }}">
+                                            @csrf
+                                            <button class="inline-flex items-center gap-1 rounded-full bg-green-600 px-4 py-1.5 text-white text-xs font-semibold shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition">
+                                                <i class="fas fa-check"></i><span>Accept</span>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('invitations.decline', $inv->id_invitation) }}">
+                                            @csrf
+                                            <button class="inline-flex items-center gap-1 rounded-full bg-red-600 px-4 py-1.5 text-white text-xs font-semibold shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition">
+                                                <i class="fas fa-times"></i><span>Decline</span>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         </div>
