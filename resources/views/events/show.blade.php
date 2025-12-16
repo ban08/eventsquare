@@ -75,22 +75,50 @@
                     </div>
 
                     {{-- Meta info --}}
-                    <dl class="mt-8 grid gap-6 text-base text-slate-700 sm:grid-cols-2">
+                    <dl class="mt-8 grid gap-6 text-base text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+                        {{-- Organizer --}}
+                        <div class="flex items-start gap-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 shadow">
+                            <dt class="mt-1"><i class="fas fa-user text-indigo-500"></i></dt>
+                            <dd>
+                                <p class="font-medium text-slate-900">Organizer</p>
+                                <p class="mt-1">{{ $event->organizer->name ?? 'Unknown' }}</p>
+                            </dd>
+                        </div>
+                        {{-- Start date/time --}}
                         <div class="flex items-start gap-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 shadow">
                             <dt class="mt-1"><i class="fas fa-calendar-day text-indigo-500"></i></dt>
                             <dd>
-                                <p class="font-medium text-slate-900">Date &amp; time</p>
+                                <p class="font-medium text-slate-900">Starts</p>
                                 <p class="mt-1">{{ $event->start_at }}</p>
                             </dd>
                         </div>
-                        <div class="flex items-start gap-3 rounded-2xl bg-gradient-to-r from-pink-50 to-indigo-50 px-5 py-4 shadow">
-                            <dt class="mt-1"><i class="fas fa-location-dot text-pink-500"></i></dt>
+                        {{-- Venue --}}
+                        <div class="flex items-start gap-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 shadow">
+                            <dt class="mt-1"><i class="fas fa-location-dot text-indigo-500"></i></dt>
                             <dd>
                                 <p class="font-medium text-slate-900">Venue</p>
                                 <p class="mt-1">{{ $event->venue }}</p>
                             </dd>
                         </div>
+                        {{-- End date/time --}}
+                        <div class="flex items-start gap-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 shadow">
+                            <dt class="mt-1"><i class="fas fa-calendar-check text-indigo-500"></i></dt>
+                            <dd>
+                                <p class="font-medium text-slate-900">Ends</p>
+                                <p class="mt-1">{{ $event->end_at ?? 'N/A' }}</p>
+                            </dd>
+                        </div>
                     </dl>
+
+                    {{-- Capacity indicator --}}
+                    <div class="mt-6 flex items-center gap-2 text-base text-slate-700">
+                        <i class="fas fa-users text-indigo-500"></i>
+                        <span class="font-medium">Capacity:</span>
+                        <span>{{ $event->current_participants_count ?? 0 }}/{{ $event->capacity }}</span>
+                        @if($event->is_full)
+                            <span class="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Full</span>
+                        @endif
+                    </div>
 
                     {{-- Description --}}
                     <div class="mt-10 border-t border-slate-200 pt-8">
@@ -98,13 +126,13 @@
                         <p class="mt-2 text-base leading-relaxed text-slate-700 max-w-3xl">{{ $event->description }}</p>
                     </div>
 
-                    {{-- Invitations prototype (OR03 / RU10) --}}
+                    {{-- Invitations prototype (OR03 / RU10) - Only visible to the event organizer --}}
+                    @auth
+                        @if(Auth::id() === $event->id_organizer)
                     <div class="mt-10 border-t border-slate-200 pt-8">
                         <h3 class="text-base font-semibold text-indigo-700 mb-4">Invitations</h3>
 
-                        @auth
                             {{-- Organizer invite form --}}
-                            @if(Auth::id() === $event->id_organizer)
                                 <form action="{{ route('invitations.invite', $event->id_event) }}" method="POST" class="mb-6 flex items-end gap-3">
                                     @csrf
                                     <div>
@@ -119,7 +147,6 @@
                                         <span>Invite</span>
                                     </button>
                                 </form>
-                            @endif
 
                             {{-- List invitations (pending + responded) --}}
                             <div class="space-y-3">
@@ -160,8 +187,9 @@
                                     <p class="text-sm text-slate-500">No invitations yet.</p>
                                 @endforelse
                             </div>
-                        @endauth
                     </div>
+                        @endif
+                    @endauth
 
                     {{-- Apply to event (RU09) --}}
                     @auth
