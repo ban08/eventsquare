@@ -18,11 +18,13 @@ class Application extends Model
         'created_at'
     ];
 
+    //cada candidatura pertence a 1 user
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'id_user');
-    }
+    }   
 
+    //cada candidatura pertence a 1 evento
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'id_event');

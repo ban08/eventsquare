@@ -368,9 +368,11 @@ class EventController extends Controller
             ->with('success', 'Event deleted successfully!');
     }
 
+
+    //Apply to an event (RU09)
     public function apply(Event $event)
     {
-        $user = Auth::user();
+        $user = Auth::user(); //user autenticado
 
         // Cannot apply to non-published events (including canceled)
         if ($event->status !== 'published') {
@@ -393,7 +395,7 @@ class EventController extends Controller
 
         // Cannot apply if already participant
         $alreadyParticipant = $event->participants()
-            ->where('id_user', $user->id_user)
+            ->where('participation.id_user', $user->id_user)
             ->exists();
 
         if ($alreadyParticipant) {
