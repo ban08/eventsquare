@@ -23,21 +23,22 @@ class EventController extends Controller
 
         // AD01: Admins can browse ALL events, regular users only see public/published
         if (!Gate::allows('admin')) {
-            $query->where(function ($q) {
-                // Public and published events
-                $q->where(function ($sub) {
-                    $sub->where('visibility', 'public')
-                        ->where('status', 'published');
-                });
+            // Global filter: Only published and future events (hides completed/canceled/draft/past)
+            $query->where('status', 'published')
+                  ->where('start_at', '>', now());
 
-                // OR events where the user is a participant or invited (even if private)
+            $query->where(function ($q) {
+                // Public events
+                $q->where('visibility', 'public');
+
+                // OR events where the user is involved (participant, invited, organizer)
                 if (Auth::check()) {
                     $userId = Auth::id();
                     $q->orWhereHas('participations', function ($p) use ($userId) {
                         $p->where('id_user', $userId);
                     })->orWhereHas('invitations', function ($i) use ($userId) {
                         $i->where('id_invitee', $userId);
-                    });
+                    })->orWhere('id_organizer', $userId);
                 }
             });
         }
@@ -101,7 +102,8 @@ class EventController extends Controller
         $query = Event::query()
             ->with('tags') // US03: Include tags in API response
             ->where('visibility', 'public')
-            ->where('status', 'published');
+            ->where('status', 'published')
+            ->where('start_at', '>', now()); // BR14: Only future events
 
         $search = trim((string) $request->input('q', ''));
         $tagFilters = $request->input('tags', []); // US03: Multiple tag-based exploration
@@ -241,8 +243,18 @@ class EventController extends Controller
     public function show(Event $event)
     {
         // Eager-load invitations + invitee user to avoid N+ queries when listing invitations.
-        $event->load(['invitations.invitee', 'applications.user', 'polls.options']);
-        return view('events.show', compact('event'));
+        $event->load([
+            'invitations.invitee', 
+            'applications.user', 
+            'polls.options' => function($query) {
+                $query->withCount('votes');
+            },
+            'polls.votes' // Load all votes to check user participation in view (acceptable for scale)
+        ]);
+
+        $isParticipant = Auth::check() ? $event->participations()->where('id_user', Auth::id())->whereNull('left_at')->exists() : false;
+
+        return view('events.show', compact('event', 'isParticipant'));
     }
 
 
@@ -494,6 +506,16 @@ class EventController extends Controller
         // BR13: Admins cannot participate in events
         if (Gate::allows('admin')) {
             return back()->with('error', 'Administrators cannot participate in events.');
+        }
+
+        // Organizer cannot apply to their own event
+        if ($event->id_organizer === $user->id_user) {
+            return back()->with('error', 'Organizers cannot apply to their own event.');
+        }
+
+        // Registration closes 24 hours before event start
+        if ($event->start_at->copy()->subHours(24)->isPast()) {
+            return back()->with('error', 'Registration closed 24 hours before event start.');
         }
 
         // Cannot apply to non-published events (including canceled)

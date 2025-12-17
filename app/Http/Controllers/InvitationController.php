@@ -157,6 +157,14 @@ class InvitationController extends Controller
             return back()->withErrors(['invitation' => 'Event no longer exists.']);
         }
 
+        // Registration closes 24 hours before event start
+        if ($event->start_at->copy()->subHours(24)->isPast()) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Registration closed 24 hours before event start.'], 422);
+            }
+            return back()->withErrors(['invitation' => 'Registration closed 24 hours before event start.']);
+        }
+
         // Cannot accept invitation to canceled, completed, or deleted events
         // Use effective_status to catch events that are past their end date
         $effectiveStatus = $event->effective_status;

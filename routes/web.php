@@ -105,6 +105,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->con
 // Notifications (includes RU10 invitations list)
 Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
+    Route::get('/check', [\App\Http\Controllers\NotificationController::class, 'check'])->name('check');
     Route::post('/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('markRead');
     Route::post('/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('markAllRead');
 });
@@ -112,6 +113,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->pre
 // Polls (OR06)
 Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->controller(\App\Http\Controllers\PollController::class)->group(function () {
     Route::post('/events/{event}/polls', 'store')->name('polls.store');
+    Route::post('/polls/{poll}/vote', 'vote')->name('polls.vote'); // AT06
+    Route::delete('/polls/{poll}/vote', 'removeVote')->name('polls.removeVote');
     Route::delete('/polls/{poll}', 'destroy')->name('polls.destroy');
 });
 

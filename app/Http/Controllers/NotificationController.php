@@ -108,4 +108,20 @@ class NotificationController extends Controller
         return redirect()->route('notifications.index', ['tab' => 'activity'])
             ->with('success', 'All notifications marked as read.');
     }
+
+    /**
+     * Get the current unread notification count.
+     */
+    public function check()
+    {
+        if (!Auth::check()) {
+            return response()->json(['count' => 0]);
+        }
+
+        $count = Notification::where('id_user', Auth::id())
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
 }

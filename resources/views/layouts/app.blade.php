@@ -132,9 +132,9 @@
                         <a href="{{ route('notifications.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
                             <i class="fas fa-bell mr-1 text-[12px] text-indigo-600"></i>
                             <span class="flex items-center gap-1">Notifications
-                                @if($totalNotifCount > 0)
-                                    <span class="text-xs font-bold text-indigo-600">{{ $totalNotifCount }}</span>
-                                @endif
+                                <span id="notification-badge" class="text-xs font-bold text-indigo-600 {{ $totalNotifCount > 0 ? '' : 'hidden' }}">
+                                    {{ $totalNotifCount > 0 ? $totalNotifCount : '' }}
+                                </span>
                             </span>
                         </a>
                         @endcannot
@@ -237,6 +237,30 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const badge = document.getElementById('notification-badge');
+            if (!badge) return; // Not logged in or admin
+
+            function checkNotifications() {
+                fetch('{{ route("notifications.check") }}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.count > 0) {
+                            badge.textContent = data.count;
+                            badge.classList.remove('hidden');
+                        } else {
+                            badge.classList.add('hidden');
+                        }
+                    })
+                    .catch(error => console.error('Error checking notifications:', error));
+            }
+
+            // Check every 10 seconds
+            setInterval(checkNotifications, 10000);
+        });
+    </script>
 
     {{--@stack('scripts') works like @stack('styles').
         Child views can push extra <script> tags using @push('scripts').--}}

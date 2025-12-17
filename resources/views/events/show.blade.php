@@ -123,7 +123,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <p class="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-700 transition">{{ $participant->name }}</p>
-                                            <p class="text-xs text-slate-500 truncate">Member</p>
+                                            <p class="text-xs text-slate-500 truncate">{{ $participant->id_user === $event->id_organizer ? 'Organizer' : 'Member' }}</p>
                                         </div>
                                     </a>
                                 @endforeach
@@ -155,14 +155,14 @@
                     @endauth
                 </div>
 
-                {{-- Polls Card (OR06) --}}
-                @auth
+                {{-- Polls Card (OR06 + AT06) --}}
+                @if(Auth::check() && ($isParticipant || Auth::id() === $event->id_organizer))
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
                         <div class="flex items-center justify-between mb-6">
                             <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
                                 <i class="fas fa-poll text-indigo-500"></i> Polls
                             </h2>
-                            @if(Auth::id() === $event->id_organizer)
+                            @if(Auth::id() === $event->id_organizer && $event->effective_status !== 'canceled')
                                 <button onclick="openCreatePollModal()" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition">
                                     <i class="fas fa-plus"></i> Create Poll
                                 </button>
@@ -170,37 +170,9 @@
                         </div>
 
                         @if($event->polls->count() > 0)
-                            <div class="space-y-6">
+                            <div class="space-y-6" id="polls-container">
                                 @foreach($event->polls as $poll)
-                                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <h3 class="font-semibold text-slate-900">{{ $poll->question }}</h3>
-                                            @if(Auth::id() === $event->id_organizer)
-                                                <form action="{{ route('polls.destroy', $poll->id_poll) }}" method="POST" onsubmit="return confirm('Delete this poll?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-slate-400 hover:text-red-600 transition">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                        
-                                        <div class="space-y-2">
-                                            @foreach($poll->options as $option)
-                                                <div class="relative">
-                                                    {{-- Visual representation only for now (voting is next US) --}}
-                                                    <div class="flex items-center justify-between text-sm text-slate-700 mb-1">
-                                                        <span>{{ $option->label }}</span>
-                                                        <span class="text-slate-500">0 votes</span>
-                                                    </div>
-                                                    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                                                        <div class="bg-indigo-500 h-2 rounded-full" style="width: 0%"></div>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
+                                    @include('events.partials.poll-card', ['poll' => $poll, 'event' => $event])
                                 @endforeach
                             </div>
                         @else
@@ -209,7 +181,7 @@
                             </div>
                         @endif
                     </div>
-                @endauth
+                @endif
 
                 {{-- Organizer Only: Applications --}}
                 @auth
@@ -542,7 +514,7 @@
                                                 <span class="text-sm font-medium text-slate-900 group-hover:text-indigo-600 truncate block">
                                                     {{ $participant->name }}
                                                 </span>
-                                                <p class="text-xs text-slate-500 truncate">Member</p>
+                                                <p class="text-xs text-slate-500 truncate">{{ $participant->id_user === $event->id_organizer ? 'Organizer' : 'Member' }}</p>
                                             </div>
                                             @if(Auth::id() === $participant->id_user)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
@@ -660,3 +632,49 @@
         function confirmAdminDelete() { if(activeForm) activeForm.submit(); }
     </script>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const pollsContainer = document.getElementById('polls-container');
+        if (!pollsContainer) return;
+
+        pollsContainer.addEventListener('submit', function(e) {
+            if (e.target.matches('.poll-vote-form') || e.target.matches('.poll-remove-vote-form')) {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+                const action = form.action;
+
+                // Disable button to prevent double submit
+                const btn = form.querySelector('button[type="submit"]');
+                if(btn) btn.disabled = true;
+
+                fetch(action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html) {
+                        // Find the closest poll card and replace it
+                        const card = form.closest('[id^="poll-card-"]');
+                        if (card) {
+                            card.outerHTML = data.html;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if(btn) btn.disabled = false;
+                    alert('An error occurred. Please try again.');
+                });
+            }
+        });
+    });
+</script>
+@endpush
