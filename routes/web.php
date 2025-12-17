@@ -58,11 +58,11 @@ Route::controller(EventController::class)->group(function () {
 
     // Show the "create event" form.
     // Only logged-in users can access this page.    
-    Route::get('/events/create', 'create')->name('events.create')->middleware('auth');
+    Route::get('/events/create', 'create')->name('events.create')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
     // Handle the "create event" form when submitted.
     // This saves the event in the database.    
-    Route::post('/events', 'store')->name('events.store')->middleware('auth');
+    Route::post('/events', 'store')->name('events.store')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
     // Show a single event by its ID (e.g. /events/5).
     Route::get('/events/{event}', 'show')->name('events.show');
@@ -73,44 +73,44 @@ Route::controller(EventController::class)->group(function () {
     Route::get('/my-events', 'mine')->name('events.mine')->middleware('auth');    
 
     // Show edit form for an existing event (OR02)
-    Route::get('/events/{event}/edit', 'edit')->name('events.edit')->middleware('auth');
+    Route::get('/events/{event}/edit', 'edit')->name('events.edit')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
     // Handle edit form submission (update existing event) (OR02)
-    Route::put('/events/{event}', 'update')->name('events.update')->middleware('auth');
+    Route::put('/events/{event}', 'update')->name('events.update')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
     // Delete an event (OR08) - only for authenticated users
-    Route::delete('/events/{event}', 'destroy')->name('events.destroy')->middleware('auth');    
+    Route::delete('/events/{event}', 'destroy')->name('events.destroy')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);    
 
     // Cancel an event - only for authenticated users
-    Route::post('/events/{event}/cancel', 'cancel')->name('events.cancel')->middleware('auth');
+    Route::post('/events/{event}/cancel', 'cancel')->name('events.cancel')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
     
     // Apply to event (RU09)
-    Route::post('/events/{event}/apply', 'apply')->name('events.apply')->middleware('auth');
+    Route::post('/events/{event}/apply', 'apply')->name('events.apply')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
 });
 
 // Invitations (OR03 invite, RU10 respond)
-Route::middleware('auth')->controller(InvitationController::class)->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->controller(InvitationController::class)->group(function () {
     Route::post('/events/{event}/invite', 'invite')->name('invitations.invite'); // OR03
     Route::post('/invitations/{invitation}/accept', 'accept')->name('invitations.accept'); // RU10
     Route::post('/invitations/{invitation}/decline', 'decline')->name('invitations.decline'); // RU10
 });
 
 // Applications (OR04 approve/reject)
-Route::middleware('auth')->controller(\App\Http\Controllers\ApplicationController::class)->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->controller(\App\Http\Controllers\ApplicationController::class)->group(function () {
     Route::post('/applications/{application}/accept', 'accept')->name('applications.accept');
     Route::post('/applications/{application}/reject', 'reject')->name('applications.reject');
 });
 
 // Notifications (includes RU10 invitations list)
-Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
     Route::post('/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('markRead');
     Route::post('/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('markAllRead');
 });
 
 // Profile
-Route::middleware('auth')->controller(ProfileController::class)->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->controller(ProfileController::class)->group(function () {
     Route::get('/profile/edit', 'edit')->name('profile.edit');  // RU02
     Route::put('/profile/update', 'update')->name('profile.update');
     Route::delete('/profile', 'destroy')->name('profile.destroy'); // RU07
