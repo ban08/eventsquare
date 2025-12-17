@@ -14,13 +14,11 @@
             </div>
             
             @if($unreadCount > 0)
-                <form method="POST" action="{{ route('notifications.markAllRead') }}">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
-                        <i class="fas fa-check-double mr-2"></i>
-                        Mark all as read
-                    </button>
-                </form>
+                <button id="mark-all-read-btn" data-url="{{ route('notifications.markAllRead') }}" 
+                        class="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+                    <i class="fas fa-check-double mr-2"></i>
+                    Mark all as read
+                </button>
             @endif
         </div>
 
@@ -31,15 +29,12 @@
                         class="flex-1 py-4 text-sm font-medium text-center border-b-2 border-indigo-500 text-indigo-600 hover:bg-slate-50 transition-colors relative">
                     Inbox
                     @if($pendingInvitations->count() > 0)
-                        <span class="ml-2 bg-indigo-100 text-indigo-700 py-0.5 px-2 rounded-full text-xs">{{ $pendingInvitations->count() }}</span>
+                        <span id="inbox-badge" class="ml-2 bg-indigo-100 text-indigo-700 py-0.5 px-2 rounded-full text-xs">{{ $pendingInvitations->count() }}</span>
                     @endif
                 </button>
                 <button onclick="switchTab('activity')" id="tab-btn-activity"
                         class="flex-1 py-4 text-sm font-medium text-center border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors relative">
                     Activity
-                    @if($unreadCount > 0)
-                        <span class="ml-2 bg-red-100 text-red-700 py-0.5 px-2 rounded-full text-xs">{{ $unreadCount }}</span>
-                    @endif
                 </button>
             </div>
 
@@ -50,7 +45,7 @@
                     <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Pending Invitations</h2>
                     
                     @if($pendingInvitations->isEmpty())
-                        <div class="text-center py-12">
+                        <div id="inbox-empty-state" class="text-center py-12">
                             <div class="bg-slate-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                                 <i class="fas fa-envelope-open text-slate-300 text-2xl"></i>
                             </div>
@@ -58,14 +53,14 @@
                             <p class="text-slate-500 text-sm mt-1">You're all caught up!</p>
                         </div>
                     @else
-                        <div class="space-y-4">
+                        <div id="invitation-list" class="space-y-4">
                             @foreach($pendingInvitations as $inv)
                                 @php
                                     $effectiveStatus = $inv->event->effective_status ?? 'unknown';
                                     $isInvalid = in_array($effectiveStatus, ['canceled', 'completed', 'deleted']);
                                     $eventDate = $inv->event->start_at;
                                 @endphp
-                                <div class="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border {{ $isInvalid ? 'border-slate-200 bg-slate-50' : 'border-indigo-100 bg-white shadow-sm' }} transition-all hover:shadow-md">
+                                <div class="invitation-item flex flex-col sm:flex-row gap-4 p-4 rounded-xl border {{ $isInvalid ? 'border-slate-200 bg-slate-50' : 'border-indigo-100 bg-white shadow-sm' }} transition-all hover:shadow-md">
                                     {{-- Date Box --}}
                                     <div class="hidden sm:flex flex-col items-center justify-center w-16 h-16 rounded-lg {{ $isInvalid ? 'bg-slate-200 text-slate-400' : 'bg-indigo-50 text-indigo-600' }} shrink-0">
                                         <span class="text-xs font-bold uppercase">{{ $eventDate ? $eventDate->format('M') : '??' }}</span>
@@ -108,18 +103,14 @@
                                                 @if($isInvalid)
                                                     <span class="text-xs text-slate-500 italic py-2">Cannot join {{ $effectiveStatus }} event</span>
                                                 @else
-                                                    <form method="POST" action="{{ route('invitations.decline', $inv->id_invitation) }}">
-                                                        @csrf
-                                                        <button type="submit" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                                            Decline
-                                                        </button>
-                                                    </form>
-                                                    <form method="POST" action="{{ route('invitations.accept', $inv->id_invitation) }}">
-                                                        @csrf
-                                                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm transition-colors">
-                                                            Accept Invitation
-                                                        </button>
-                                                    </form>
+                                                    <button data-url="{{ route('invitations.decline', $inv->id_invitation) }}" 
+                                                            class="ajax-action-btn px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                                        Decline
+                                                    </button>
+                                                    <button data-url="{{ route('invitations.accept', $inv->id_invitation) }}" 
+                                                            class="ajax-action-btn px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm transition-colors">
+                                                        Accept Invitation
+                                                    </button>
                                                 @endif
                                             </div>
                                         </div>
@@ -157,7 +148,7 @@
             {{-- Activity Tab (Notifications) --}}
             <div id="tab-content-activity" class="hidden">
                 @if($notifications->isEmpty())
-                    <div class="text-center py-12">
+                    <div id="activity-empty-state" class="text-center py-12">
                         <div class="bg-slate-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-bell-slash text-slate-300 text-2xl"></i>
                         </div>
@@ -165,9 +156,9 @@
                         <p class="text-slate-500 text-sm mt-1">We'll notify you when something happens.</p>
                     </div>
                 @else
-                    <ul class="divide-y divide-slate-100">
+                    <ul id="notification-list" class="divide-y divide-slate-100">
                         @foreach($notifications as $notification)
-                            <li class="group relative p-4 hover:bg-slate-50 transition-colors {{ !$notification->is_read ? 'bg-indigo-50/30' : '' }}">
+                            <li class="notification-item group relative p-4 hover:bg-slate-50 transition-colors {{ !$notification->is_read ? 'bg-indigo-50/30' : '' }}">
                                 <div class="flex gap-4">
                                     <div class="shrink-0 mt-1">
                                         @if($notification->message === 'invited')
@@ -199,10 +190,9 @@
                                     </div>
                                     @if(!$notification->is_read)
                                         <div class="shrink-0 self-center">
-                                            <form method="POST" action="{{ route('notifications.markRead', $notification->id_notification) }}">
-                                                @csrf
-                                                <button type="submit" class="w-2 h-2 rounded-full bg-indigo-600 hover:ring-4 hover:ring-indigo-100 transition-all" title="Mark as read"></button>
-                                            </form>
+                                            <button data-url="{{ route('notifications.markRead', $notification->id_notification) }}" 
+                                                    class="ajax-action-btn w-2 h-2 rounded-full bg-indigo-600 hover:ring-4 hover:ring-indigo-100 transition-all" 
+                                                    title="Mark as read"></button>
                                         </div>
                                     @endif
                                 </div>
@@ -237,7 +227,151 @@
         const activeBtn = document.getElementById('tab-btn-' + tab);
         activeBtn.classList.remove('border-transparent', 'text-slate-500');
         activeBtn.classList.add('border-indigo-500', 'text-indigo-600');
+
+        // Update URL without reloading
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({}, '', url);
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize tab
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab') || 'inbox';
+        switchTab(tab);
+
+        // Helper to get CSRF token
+        const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]').content;
+
+        // Handle individual AJAX actions (Mark Read, Accept, Decline)
+        document.querySelectorAll('.ajax-action-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const url = btn.dataset.url;
+                const method = 'POST';
+                
+                // Visual feedback immediately
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': getCsrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // Success: Remove the item from DOM
+                        const item = btn.closest('.invitation-item') || btn.closest('.notification-item');
+                        if (item) {
+                            item.style.transition = 'all 0.3s ease';
+                            item.style.opacity = '0';
+                            item.style.transform = 'translateX(10px)';
+                            setTimeout(() => {
+                                item.remove();
+                                checkEmptyStates();
+                            }, 300);
+                        }
+                    } else {
+                        alert(data.message || 'An error occurred.');
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred.');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
+        });
+
+        // Handle Mark All Read
+        const markAllBtn = document.getElementById('mark-all-read-btn');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const url = markAllBtn.dataset.url;
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': getCsrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                    });
+
+                    if (response.ok) {
+                        // Remove all unread indicators visually
+                        document.querySelectorAll('.notification-item').forEach(item => {
+                            item.classList.remove('bg-indigo-50/30');
+                            const dot = item.querySelector('.ajax-action-btn'); // The read dot
+                            if (dot) dot.remove();
+                        });
+                        markAllBtn.remove(); // Remove the button itself
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+
+        // Helper to check if lists are empty and show empty states
+        function checkEmptyStates() {
+            // Check Invitations
+            const invList = document.getElementById('invitation-list');
+            if (invList && invList.children.length === 0) {
+                invList.remove();
+                const badge = document.getElementById('inbox-badge');
+                if (badge) badge.remove();
+                
+                // Show empty state
+                const container = document.getElementById('tab-content-inbox').querySelector('.p-6');
+                if (container) {
+                    container.innerHTML = `
+                        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Pending Invitations</h2>
+                        <div id="inbox-empty-state" class="text-center py-12">
+                            <div class="bg-slate-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-envelope-open text-slate-300 text-2xl"></i>
+                            </div>
+                            <h3 class="text-slate-900 font-medium">No pending invitations</h3>
+                            <p class="text-slate-500 text-sm mt-1">You're all caught up!</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Check Notifications
+            const notifList = document.getElementById('notification-list');
+            if (notifList && notifList.children.length === 0) {
+                notifList.remove();
+                const container = document.getElementById('tab-content-activity');
+                if (container) {
+                    container.innerHTML = `
+                        <div id="activity-empty-state" class="text-center py-12">
+                            <div class="bg-slate-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-bell-slash text-slate-300 text-2xl"></i>
+                            </div>
+                            <h3 class="text-slate-900 font-medium">No notifications</h3>
+                            <p class="text-slate-500 text-sm mt-1">We'll notify you when something happens.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+    });
 </script>
 @endpush
 @endsection

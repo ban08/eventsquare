@@ -113,17 +113,26 @@ class InvitationController extends Controller
     public function accept(Invitation $invitation)
     {
         if (!Auth::check() || Auth::id() !== $invitation->id_invitee) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'You are not the invitee.'], 403);
+            }
             abort(403, 'You are not the invitee.');
         }
 
         // BR13: Admins cannot participate in events
         if (Gate::allows('admin')) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Administrators cannot participate in events.'], 403);
+            }
             return back()->with('error', 'Administrators cannot participate in events.');
         }
 
         // Load the event to check its status
         $event = Event::find($invitation->id_event);
         if (!$event) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Event no longer exists.'], 404);
+            }
             return back()->withErrors(['invitation' => 'Event no longer exists.']);
         }
 
@@ -131,10 +140,16 @@ class InvitationController extends Controller
         // Use effective_status to catch events that are past their end date
         $effectiveStatus = $event->effective_status;
         if (in_array($effectiveStatus, ['canceled', 'completed', 'deleted'])) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Cannot join a ' . $effectiveStatus . ' event.'], 422);
+            }
             return back()->withErrors(['invitation' => 'Cannot join a ' . $effectiveStatus . ' event.']);
         }
 
         if ($invitation->status !== 'pending') {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Invitation already responded.'], 422);
+            }
             return back()->withErrors(['invitation' => 'Invitation already responded.']);
         }
 
@@ -154,6 +169,10 @@ class InvitationController extends Controller
             // ignore if constraint/trigger rejects
         }
 
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Invitation accepted.']);
+        }
+
         return back()->with('success', 'Invitation accepted.');
     }
 
@@ -163,9 +182,15 @@ class InvitationController extends Controller
     public function decline(Invitation $invitation)
     {
         if (!Auth::check() || Auth::id() !== $invitation->id_invitee) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'You are not the invitee.'], 403);
+            }
             abort(403, 'You are not the invitee.');
         }
         if ($invitation->status !== 'pending') {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Invitation already responded.'], 422);
+            }
             return back()->withErrors(['invitation' => 'Invitation already responded.']);
         }
 
@@ -173,6 +198,10 @@ class InvitationController extends Controller
             'status'       => 'declined',
             'responded_at' => now(),
         ]);
+
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Invitation declined.']);
+        }
 
         return back()->with('success', 'Invitation declined.');
     }

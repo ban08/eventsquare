@@ -63,12 +63,21 @@ class NotificationController extends Controller
     public function markAsRead(Notification $notification)
     {
         if (!Auth::check() || Auth::id() !== $notification->id_user) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Unauthorized.'], 403);
+            }
             abort(403, 'Unauthorized.');
         }
 
         $notification->markAsRead();
 
-        return back()->with('success', 'Notification marked as read.');
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Notification marked as read.']);
+        }
+
+        // Redirect back to the activity tab
+        return redirect()->route('notifications.index', ['tab' => 'activity'])
+            ->with('success', 'Notification marked as read.');
     }
 
     /**
@@ -77,6 +86,9 @@ class NotificationController extends Controller
     public function markAllAsRead()
     {
         if (!Auth::check()) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
             return redirect()->route('login');
         }
 
@@ -84,6 +96,12 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        return back()->with('success', 'All notifications marked as read.');
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'All notifications marked as read.']);
+        }
+
+        // Redirect back to the activity tab
+        return redirect()->route('notifications.index', ['tab' => 'activity'])
+            ->with('success', 'All notifications marked as read.');
     }
 }

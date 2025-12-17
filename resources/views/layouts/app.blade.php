@@ -91,14 +91,10 @@
                     @else
                     <div class="flex items-center gap-4 text-sm text-gray-700">
                         @php
-                            // Count pending invitations + unread notifications for badge
-                            $pendingInvCount = \App\Models\Invitation::where('id_invitee', Auth::id())
-                                ->where('status','pending')
-                                ->count();
-                            $unreadNotifCount = \App\Models\Notification::where('id_user', Auth::id())
+                            // Count unread notifications for badge (Activity only)
+                            $totalNotifCount = \App\Models\Notification::where('id_user', Auth::id())
                                 ->whereNull('read_at')
                                 ->count();
-                            $totalNotifCount = $pendingInvCount + $unreadNotifCount;
                         @endphp
                         <span class="flex items-center gap-2">
                             Welcome,&nbsp;
@@ -137,7 +133,7 @@
                             <i class="fas fa-bell mr-1 text-[12px] text-indigo-600"></i>
                             <span class="flex items-center gap-1">Notifications
                                 @if($totalNotifCount > 0)
-                                    <span class="flex items-center justify-center bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[1.25rem] h-4 rounded-full leading-none shadow-sm">{{ $totalNotifCount }}</span>
+                                    <span class="text-xs font-bold text-indigo-600">{{ $totalNotifCount }}</span>
                                 @endif
                             </span>
                         </a>
