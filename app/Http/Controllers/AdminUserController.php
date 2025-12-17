@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class AdminUserController extends Controller
 {
@@ -206,11 +207,26 @@ class AdminUserController extends Controller
                 ]);
             }
 
-            // Delete profile first (R03)
+            // Delete profile photo if exists
+            if ($user->profile && $user->profile->photo_url) {
+                Storage::disk('public')->delete($user->profile->photo_url);
+            }
+
+            // Delete profile (R03)
             DB::table('profile')->where('id_user', $user->id_user)->delete();
 
-            // Delete the user - cascading will handle related records
-            $user->delete();
+            // Remove participations, applications, invitations
+            $user->participations()->delete();
+            $user->applications()->delete();
+            $user->invitations()->delete();
+
+            // Anonymize and Soft Delete
+            $user->name = 'Deleted User';
+            $user->email = 'deleted_' . $user->id_user . '_' . time() . '@eventsquare.local';
+            $user->password_hash = Hash::make(uniqid()); // Scramble password
+            $user->status = 'deleted';
+            $user->location = null;
+            $user->save();
         });
 
         return redirect()

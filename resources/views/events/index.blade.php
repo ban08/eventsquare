@@ -109,7 +109,9 @@
 
                                 {{-- US03: Display event tags --}}
                                 <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
-                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">Public</span>
+                                    <span class="rounded-full px-2 py-0.5 text-slate-600 {{ $event->visibility === 'public' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600' }}">
+                                        {{ ucfirst($event->visibility) }}
+                                    </span>
                                     @forelse($event->tags as $tag)
                                         <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-600 capitalize">{{ $tag->name }}</span>
                                     @empty

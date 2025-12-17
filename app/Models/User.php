@@ -128,4 +128,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Participation::class, 'id_user');
     }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class, 'id_user');
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(Invitation::class, 'id_invitee');
+    }
 }

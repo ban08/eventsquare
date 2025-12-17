@@ -100,18 +100,23 @@ class ProfileController extends Controller
 
         $user = Auth::user();
 
+        // Delete profile picture if exists
+        if ($user->profile && $user->profile->photo_url) {
+            Storage::disk('public')->delete($user->profile->photo_url);
+            $user->profile->update(['photo_url' => null]);
+        }
+
+        // Remove participations, applications, invitations
+        $user->participations()->delete();
+        $user->applications()->delete();
+        $user->invitations()->delete();
+
         // Anonymize and Soft Delete
         $user->name = 'Deleted User';
         $user->email = 'deleted_' . $user->id_user . '_' . time() . '@eventsquare.local';
         $user->password_hash = Hash::make(uniqid()); // Scramble password
         $user->status = 'deleted';
         $user->save();
-
-        // Delete profile picture if exists
-        if ($user->profile && $user->profile->photo_url) {
-            Storage::disk('public')->delete($user->profile->photo_url);
-            $user->profile->update(['photo_url' => null]);
-        }
 
         Auth::logout();
 
