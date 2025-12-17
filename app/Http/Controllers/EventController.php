@@ -301,7 +301,7 @@ class EventController extends Controller
 
         // Cannot apply if already participant
         $alreadyParticipant = $event->participants()
-            ->where('id_user', $user->id_user)
+            ->where('participation.id_user', $user->id_user)
             ->exists();
 
         if ($alreadyParticipant) {
