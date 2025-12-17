@@ -33,6 +33,10 @@ Route::post('/password/reset/security', [RecoveryController::class, 'resetWithAn
 // Home - redirect to events browse page (main landing)
 Route::redirect('/', '/events');
 
+// US06 - About Page (Static)
+Route::view('/about', 'about')->name('about');
+
+
 
 // Admin user management (AD07, if required by ER/EBD)
 Route::middleware(['auth', 'can:admin'])
