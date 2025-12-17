@@ -103,5 +103,5 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 Route::middleware('auth')->controller(ProfileController::class)->group(function () {
     Route::get('/profile', 'show')->name('profile.show');       // RU01
     Route::get('/profile/edit', 'edit')->name('profile.edit');  // RU02
-    Route::post('/profile/update', 'update')->name('profile.update');
+    Route::put('/profile/update', 'update')->name('profile.update');
 });

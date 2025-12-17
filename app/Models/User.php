@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Profile;
 use App\Models\SecurityAnswer;
+use App\Models\Event;
+use App\Models\Participation;
 
 class User extends Authenticatable
 {
@@ -117,5 +119,13 @@ class User extends Authenticatable
         return $this->hasMany(SecurityAnswer::class, 'id_user', 'id_user');
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class, 'id_organizer');
+    }
 
+    public function participations(): HasMany
+    {
+        return $this->hasMany(Participation::class, 'id_user');
+    }
 }
