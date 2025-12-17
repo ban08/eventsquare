@@ -100,6 +100,7 @@ class Notification extends Model
         return match($this->message) {
             'invited' => 'You have been invited to an event',
             'event updated' => 'An event you\'re participating in has been updated',
+            'event canceled' => 'An event you were participating in has been canceled',
             'new application' => 'Someone applied to join your event',
             'application accepted' => 'Your application to join an event was accepted',
             'application rejected' => 'Your application to join an event was rejected',

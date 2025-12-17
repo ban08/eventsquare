@@ -167,6 +167,32 @@ class InvitationController extends Controller
             return back()->withErrors(['invitation' => 'Cannot join a ' . $effectiveStatus . ' event.']);
         }
 
+        // Idempotency: If already accepted, just return success (and ensure participation)
+        if ($invitation->status === 'accepted') {
+            // Ensure participation exists
+            $exists = DB::table('participation')
+                ->where('id_event', $invitation->id_event)
+                ->where('id_user', $invitation->id_invitee)
+                ->exists();
+            
+            if (!$exists) {
+                try {
+                    DB::table('participation')->insert([
+                        'id_event' => $invitation->id_event,
+                        'id_user'  => $invitation->id_invitee,
+                        'joined_at'=> now(),
+                    ]);
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Invitation accepted.']);
+            }
+            return back()->with('success', 'Invitation accepted.');
+        }
+
         if ($invitation->status !== 'pending') {
             if (request()->wantsJson()) {
                 return response()->json(['message' => 'Invitation already responded.'], 422);
@@ -208,6 +234,15 @@ class InvitationController extends Controller
             }
             abort(403, 'You are not the invitee.');
         }
+
+        // Idempotency: If already declined, return success
+        if ($invitation->status === 'declined') {
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Invitation declined.']);
+            }
+            return back()->with('success', 'Invitation declined.');
+        }
+
         if ($invitation->status !== 'pending') {
             if (request()->wantsJson()) {
                 return response()->json(['message' => 'Invitation already responded.'], 422);
@@ -239,6 +274,9 @@ class InvitationController extends Controller
         $pending = Invitation::with(['event'])
             ->where('id_invitee', Auth::id())
             ->where('status', 'pending')
+            ->whereHas('event', function ($query) {
+                $query->where('end_at', '>', now());
+            })
             ->orderByDesc('sent_at')
             ->get();
 

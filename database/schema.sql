@@ -11,7 +11,7 @@ SET search_path TO lbaw2536;
 
 CREATE TYPE account_status AS ENUM ('active', 'blocked', 'deleted');
 CREATE TYPE event_visibility AS ENUM ('public', 'private');
-CREATE TYPE notification_message AS ENUM ('invited', 'event updated', 'new application', 'application accepted', 'application rejected');
+CREATE TYPE notification_message AS ENUM ('invited', 'event updated', 'event canceled', 'new application', 'application accepted', 'application rejected');
 CREATE TYPE event_status AS ENUM ('published', 'completed', 'canceled', 'draft', 'deleted');
 CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'declined', 'canceled', 'expired');
 CREATE TYPE application_status AS ENUM ('pending', 'approved', 'rejected', 'canceled');

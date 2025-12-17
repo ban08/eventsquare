@@ -292,13 +292,23 @@
                         @if(!$isAdmin && !$isOrganizer)
                             <div class="mt-8 pt-6 border-t border-slate-100">
                                 @if($alreadyParticipant)
-                                    <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
-                                        <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
-                                            <i class="fas fa-check text-xl"></i>
+                                    @if($event->effective_status === 'canceled')
+                                        <div class="w-full rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+                                            <div class="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2">
+                                                <i class="fas fa-ban text-xl"></i>
+                                            </div>
+                                            <h4 class="text-red-900 font-semibold">Event Canceled</h4>
+                                            <p class="text-red-700 text-xs mt-1">This event has been canceled by the organizer.</p>
                                         </div>
-                                        <h4 class="text-green-900 font-semibold">You're going!</h4>
-                                        <p class="text-green-700 text-xs mt-1">See you there.</p>
-                                    </div>
+                                    @else
+                                        <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                                            <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
+                                                <i class="fas fa-check text-xl"></i>
+                                            </div>
+                                            <h4 class="text-green-900 font-semibold">You're going!</h4>
+                                            <p class="text-green-700 text-xs mt-1">See you there.</p>
+                                        </div>
+                                    @endif
                                 @elseif($alreadyApplied)
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">
                                         <div class="mx-auto h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-2">

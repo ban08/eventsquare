@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tag;
+use App\Models\Notification;
 use Carbon\Carbon;
 
 class EventController extends Controller
@@ -346,6 +347,21 @@ class EventController extends Controller
         // 4. Update tags (sync replaces existing tags with the new list)
         $event->tags()->sync($validated['tags'] ?? []);
 
+        // AT09: Notify all current participants about the update
+        $participants = $event->participants()->wherePivot('left_at', null)->get();
+        
+        foreach ($participants as $participant) {
+            // Avoid notifying the organizer if they are also a participant
+            if ($participant->id_user !== Auth::id()) {
+                 Notification::create([
+                    'id_user' => $participant->id_user,
+                    'message' => 'event updated',
+                    'id_event' => $event->id_event,
+                    'created_at' => now(),
+                ]);
+            }
+        }
+
         // 5. Redirect back to event details
         return redirect()
             ->route('events.show', $event->id_event)
@@ -368,6 +384,25 @@ class EventController extends Controller
 
         // Update the event status to canceled
         $event->update(['status' => 'canceled']);
+
+        // Cancel all pending invitations for this event
+        Invitation::where('id_event', $event->id_event)
+            ->where('status', 'pending')
+            ->update(['status' => 'canceled', 'responded_at' => now()]);
+
+        // AT09: Notify all current participants about the cancellation (as an update)
+        $participants = $event->participants()->wherePivot('left_at', null)->get();
+        
+        foreach ($participants as $participant) {
+            if ($participant->id_user !== Auth::id()) {
+                 Notification::create([
+                    'id_user' => $participant->id_user,
+                    'message' => 'event canceled',
+                    'id_event' => $event->id_event,
+                    'created_at' => now(),
+                ]);
+            }
+        }
 
         // Redirect to event details
         return redirect()

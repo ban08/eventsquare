@@ -271,6 +271,20 @@
                     if (response.ok) {
                         // Success: Remove the item from DOM
                         const item = btn.closest('.invitation-item') || btn.closest('.notification-item');
+                        
+                        // Decrement badge count if it's an invitation
+                        if (btn.closest('.invitation-item')) {
+                            const badge = document.getElementById('inbox-badge');
+                            if (badge) {
+                                let count = parseInt(badge.innerText);
+                                if (count > 1) {
+                                    badge.innerText = count - 1;
+                                } else {
+                                    badge.remove();
+                                }
+                            }
+                        }
+
                         if (item) {
                             item.style.transition = 'all 0.3s ease';
                             item.style.opacity = '0';

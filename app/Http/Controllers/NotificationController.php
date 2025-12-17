@@ -30,9 +30,13 @@ class NotificationController extends Controller
             ->get();
 
         // Get pending invitations (RU10)
+        // Filter out invitations for events that have already ended (completed)
         $pendingInvitations = Invitation::with(['event.organizer'])
             ->where('id_invitee', $userId)
             ->where('status', 'pending')
+            ->whereHas('event', function ($query) {
+                $query->where('end_at', '>', now());
+            })
             ->orderByDesc('sent_at')
             ->get();
 
