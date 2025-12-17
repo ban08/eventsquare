@@ -87,6 +87,9 @@ Route::controller(EventController::class)->group(function () {
     // Apply to event (RU09)
     Route::post('/events/{event}/apply', 'apply')->name('events.apply')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
+    // Leave event (AT01)
+    Route::post('/events/{event}/leave', 'leave')->name('events.leave')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
+
 });
 
 // Invitations (OR03 invite, RU10 respond)

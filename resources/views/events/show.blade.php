@@ -199,7 +199,13 @@
                                                 <i class="fas fa-user"></i>
                                             </div>
                                             <div>
-                                                <p class="text-sm font-medium text-slate-900">{{ $app->user->name ?? 'Unknown User' }}</p>
+                                                @if($app->user)
+                                                    <a href="{{ route('profile.show', $app->user->id_user) }}" class="text-sm font-medium text-slate-900 hover:text-indigo-600 hover:underline transition">
+                                                        {{ $app->user->name }}
+                                                    </a>
+                                                @else
+                                                    <p class="text-sm font-medium text-slate-900">{{ 'Unknown User' }}</p>
+                                                @endif
                                                 <p class="text-xs text-slate-500">Applied {{ $app->created_at ? \Carbon\Carbon::parse($app->created_at)->diffForHumans() : 'recently' }}</p>
                                             </div>
                                         </div>
@@ -258,7 +264,13 @@
                                                 <i class="fas fa-user"></i>
                                             </div>
                                             <div>
-                                                <p class="text-sm font-medium text-slate-900">{{ $inv->invitee->name ?? $inv->invitee_email ?? 'Unknown User' }}</p>
+                                                @if($inv->invitee)
+                                                    <a href="{{ route('profile.show', $inv->invitee->id_user) }}" class="text-sm font-medium text-slate-900 hover:text-indigo-600 hover:underline transition">
+                                                        {{ $inv->invitee->name }}
+                                                    </a>
+                                                @else
+                                                    <p class="text-sm font-medium text-slate-900">{{ $inv->invitee_email ?? 'Unknown User' }}</p>
+                                                @endif
                                                 <p class="text-xs text-slate-500">Invited {{ $inv->sent_at ? $inv->sent_at->diffForHumans() : 'recently' }}</p>
                                             </div>
                                         </div>
@@ -327,8 +339,8 @@
                     {{-- Join Action --}}
                     @auth
                         @php
-                            $alreadyParticipant = $event->participants->contains(Auth::id());
-                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id());
+                            $alreadyParticipant = $isParticipant;
+                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id() && $a->status !== 'canceled');
                             $isOrganizer = $event->id_organizer == Auth::id();
                             $isAdmin = Gate::allows('admin');
                         @endphp
@@ -345,13 +357,23 @@
                                             <p class="text-red-700 text-xs mt-1">This event has been canceled by the organizer.</p>
                                         </div>
                                     @else
-                                        <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                                        <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center mb-3">
                                             <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
                                                 <i class="fas fa-check text-xl"></i>
                                             </div>
                                             <h4 class="text-green-900 font-semibold">You're going!</h4>
                                             <p class="text-green-700 text-xs mt-1">See you there.</p>
                                         </div>
+
+                                        {{-- Leave Event Button (AT01) --}}
+                                        @if(!$event->is_past && $event->start_at->copy()->subHours(24)->isFuture())
+                                            <form action="{{ route('events.leave', $event) }}" method="POST" onsubmit="return confirm('Are you sure you want to leave this event?');">
+                                                @csrf
+                                                <button type="submit" class="w-full rounded-xl bg-white border border-red-200 p-3 text-red-600 font-medium hover:bg-red-50 transition text-sm">
+                                                    Leave Event
+                                                </button>
+                                            </form>
+                                        @endif
                                     @endif
                                 @elseif($alreadyApplied)
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">

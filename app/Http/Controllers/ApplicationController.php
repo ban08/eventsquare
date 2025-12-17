@@ -35,8 +35,18 @@ class ApplicationController extends Controller
                 'decided_at' => now(),
             ]);
 
-            // Add to participants
-            $event->participants()->attach($application->id_user, ['joined_at' => now()]);
+            // Add to participants (handle re-joining)
+            $existingParticipation = \App\Models\Participation::where('id_event', $event->id_event)
+                ->where('id_user', $application->id_user)
+                ->first();
+
+            if ($existingParticipation) {
+                $existingParticipation->joined_at = now();
+                $existingParticipation->left_at = null;
+                $existingParticipation->save();
+            } else {
+                $event->participants()->attach($application->id_user, ['joined_at' => now()]);
+            }
 
             // Notify user
             Notification::create([

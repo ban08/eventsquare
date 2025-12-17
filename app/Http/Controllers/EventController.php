@@ -533,18 +533,25 @@ class EventController extends Controller
             return back()->with('error', 'This event is already full.');
         }
 
-        // Cannot apply twice
-        $alreadyApplied = $event->applications()
+        // Check for existing application
+        $existingApplication = $event->applications()
             ->where('id_user', $user->id_user)
-            ->exists();
+            ->first();
 
-        if ($alreadyApplied) {
-            return back()->with('error', 'You have already applied to this event.');
+        if ($existingApplication) {
+            if (in_array($existingApplication->status, ['pending', 'approved'])) {
+                return back()->with('error', 'You have already applied to this event.');
+            }
+            if ($existingApplication->status === 'rejected') {
+                return back()->with('error', 'Your application to this event was rejected.');
+            }
+            // If canceled, we allow re-applying
         }
 
         // Cannot apply if already participant
-        $alreadyParticipant = $event->participants()
-            ->where('participation.id_user', $user->id_user)
+        $alreadyParticipant = $event->participations()
+            ->where('id_user', $user->id_user)
+            ->whereNull('left_at')
             ->exists();
 
         if ($alreadyParticipant) {
@@ -567,17 +574,35 @@ class EventController extends Controller
 
                 // Create participation
                 $event->participants()->attach($user->id_user, ['joined_at' => now()]);
+
+                // Notify organizer
+                \App\Models\Notification::create([
+                    'id_user' => $event->id_organizer,
+                    'message' => 'user joined',
+                    'id_event' => $event->id_event,
+                    'id_invitation' => $pendingInvitation->id_invitation,
+                    'created_at' => now(),
+                ]);
             });
 
             return back()->with('success', 'You had a pending invitation. You have successfully joined the event!');
         }
 
-        // Create new application
-        $application = $event->applications()->create([
-            'id_user' => $user->id_user,
-            'status'   => 'pending',    
-            'created_at' => now()
-        ]);
+        // Create new application or update canceled one
+        if (isset($existingApplication) && $existingApplication->status === 'canceled') {
+            $existingApplication->update([
+                'status' => 'pending',
+                'created_at' => now(),
+                'decided_at' => null
+            ]);
+            $application = $existingApplication;
+        } else {
+            $application = $event->applications()->create([
+                'id_user' => $user->id_user,
+                'status'   => 'pending',    
+                'created_at' => now()
+            ]);
+        }
 
         // Notify organizer
         \App\Models\Notification::create([
@@ -589,6 +614,53 @@ class EventController extends Controller
         ]);
 
         return back()->with('success', 'Your request to join this event was submitted!');
+    }
+
+    // Leave an event (AT01)
+    public function leave(Event $event)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        // Check if user is actually participating
+        $participation = $event->participations()
+            ->where('id_user', Auth::id())
+            ->whereNull('left_at')
+            ->first();
+
+        if (!$participation) {
+            return back()->with('error', 'You are not participating in this event.');
+        }
+
+        // BR05: Participant activities locked 24h before event
+        if ($event->start_at->copy()->subHours(24)->isPast()) {
+             return back()->with('error', 'You cannot leave the event less than 24 hours before it starts.');
+        }
+
+        // Update left_at
+        $participation->left_at = now();
+        $participation->save();
+
+        // Notify organizer
+        \App\Models\Notification::create([
+            'id_user' => $event->id_organizer,
+            'message' => 'user left',
+            'id_event' => $event->id_event,
+            'created_at' => now(),
+        ]);
+
+        // Update application status if exists
+        $application = $event->applications()
+            ->where('id_user', Auth::id())
+            ->first();
+            
+        if ($application) {
+            $application->status = 'canceled';
+            $application->save();
+        }
+
+        return back()->with('success', 'You have left the event.');
     }
 
     /**

@@ -35,7 +35,7 @@ class PollController extends Controller
         $validated = $request->validate([
             'question' => ['required', 'string', 'max:255'],
             'options' => ['required', 'array', 'min:2'],
-            'options.*' => ['required', 'string', 'max:255'],
+            'options.*' => ['required', 'string', 'max:255', 'distinct'],
         ]);
 
         DB::transaction(function () use ($event, $validated) {

@@ -220,6 +220,15 @@ class InvitationController extends Controller
                 'id_user'  => $invitation->id_invitee,
                 'joined_at'=> now(),
             ]);
+
+            // Notify organizer
+            \App\Models\Notification::create([
+                'id_user' => $event->id_organizer,
+                'message' => 'user joined',
+                'id_event' => $event->id_event,
+                'id_invitation' => $invitation->id_invitation,
+                'created_at' => now(),
+            ]);
         } catch (\Throwable $e) {
             // ignore if constraint/trigger rejects
         }
