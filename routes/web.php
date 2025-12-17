@@ -109,6 +109,12 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->pre
     Route::post('/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('markAllRead');
 });
 
+// Polls (OR06)
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->controller(\App\Http\Controllers\PollController::class)->group(function () {
+    Route::post('/events/{event}/polls', 'store')->name('polls.store');
+    Route::delete('/polls/{poll}', 'destroy')->name('polls.destroy');
+});
+
 // Profile
 Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->controller(ProfileController::class)->group(function () {
     Route::get('/profile/edit', 'edit')->name('profile.edit');  // RU02

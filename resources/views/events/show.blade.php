@@ -155,6 +155,62 @@
                     @endauth
                 </div>
 
+                {{-- Polls Card (OR06) --}}
+                @auth
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fas fa-poll text-indigo-500"></i> Polls
+                            </h2>
+                            @if(Auth::id() === $event->id_organizer)
+                                <button onclick="openCreatePollModal()" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition">
+                                    <i class="fas fa-plus"></i> Create Poll
+                                </button>
+                            @endif
+                        </div>
+
+                        @if($event->polls->count() > 0)
+                            <div class="space-y-6">
+                                @foreach($event->polls as $poll)
+                                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <h3 class="font-semibold text-slate-900">{{ $poll->question }}</h3>
+                                            @if(Auth::id() === $event->id_organizer)
+                                                <form action="{{ route('polls.destroy', $poll->id_poll) }}" method="POST" onsubmit="return confirm('Delete this poll?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-slate-400 hover:text-red-600 transition">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                        
+                                        <div class="space-y-2">
+                                            @foreach($poll->options as $option)
+                                                <div class="relative">
+                                                    {{-- Visual representation only for now (voting is next US) --}}
+                                                    <div class="flex items-center justify-between text-sm text-slate-700 mb-1">
+                                                        <span>{{ $option->label }}</span>
+                                                        <span class="text-slate-500">0 votes</span>
+                                                    </div>
+                                                    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                                        <div class="bg-indigo-500 h-2 rounded-full" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                <p class="text-slate-500 text-sm">No polls created yet.</p>
+                            </div>
+                        @endif
+                    </div>
+                @endauth
+
                 {{-- Organizer Only: Applications --}}
                 @auth
                     @if(Auth::id() === $event->id_organizer)
@@ -509,6 +565,49 @@
         </div>
     </div>
 
+    {{-- Create Poll Modal --}}
+    <div id="create-poll-modal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeCreatePollModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-10">
+                <form action="{{ route('polls.store', $event->id_event) }}" method="POST">
+                    @csrf
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-bold text-slate-900 mb-4">Create New Poll</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="poll-question" class="block text-sm font-medium text-slate-700">Question</label>
+                                <input type="text" name="question" id="poll-question" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., What should we eat?">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Options</label>
+                                <div id="poll-options-container" class="space-y-2">
+                                    <input type="text" name="options[]" required class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Option 1">
+                                    <input type="text" name="options[]" required class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Option 2">
+                                </div>
+                                <button type="button" onclick="addPollOption()" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                                    + Add another option
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Create Poll
+                        </button>
+                        <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onclick="closeCreatePollModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Modal Logic
         let activeForm = null;
@@ -534,6 +633,26 @@
 
         function closeAttendeesModal() {
             document.getElementById('attendees-modal').classList.add('hidden');
+        }
+
+        function openCreatePollModal() {
+            document.getElementById('create-poll-modal').classList.remove('hidden');
+        }
+
+        function closeCreatePollModal() {
+            document.getElementById('create-poll-modal').classList.add('hidden');
+        }
+
+        function addPollOption() {
+            const container = document.getElementById('poll-options-container');
+            const count = container.children.length + 1;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'options[]';
+            input.required = true;
+            input.className = 'block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm';
+            input.placeholder = 'Option ' + count;
+            container.appendChild(input);
         }
 
         function confirmCancel() { if(activeForm) activeForm.submit(); }

@@ -36,6 +36,11 @@ class Event extends Model
     ];
 
 
+    public function polls(): HasMany
+    {
+        return $this->hasMany(Poll::class, 'id_event');
+    }
+
     // Convert some columns to special PHP types automatically.
     protected function casts(): array
     {

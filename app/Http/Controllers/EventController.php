@@ -241,7 +241,7 @@ class EventController extends Controller
     public function show(Event $event)
     {
         // Eager-load invitations + invitee user to avoid N+ queries when listing invitations.
-        $event->load(['invitations.invitee', 'applications.user']);
+        $event->load(['invitations.invitee', 'applications.user', 'polls.options']);
         return view('events.show', compact('event'));
     }
 
