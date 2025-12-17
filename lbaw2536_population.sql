@@ -232,4 +232,13 @@ VALUES
 INSERT INTO admin_report_action (id_action, action, id_report)
 VALUES
 (1, 'dismiss report', 1),  
-(3, 'resolve report', 3);  
+(3, 'resolve report', 3);
+
+-- R22 (security_question)
+INSERT INTO security_question (prompt) VALUES
+('What was the name of your first pet?'),
+('What city were you born in?'),
+('What is the name of your favorite teacher?'),
+('What was the model of your first car?'),
+('What is your favorite movie?'),
+('What is the name of the street where you grew up?');

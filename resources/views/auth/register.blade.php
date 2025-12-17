@@ -16,10 +16,7 @@
         <!-- Header -->
         {{--Center all header elements (icon, title, subtitle)--}}
         <div class="text-center">
-<<<<<<< ours
-=======
 
->>>>>>> theirs
             {{--Main heading for the page--}}
             <h2 class="text-3xl font-bold text-gray-900">Join EventSquare</h2>
             {{--Short description text under the title--}}

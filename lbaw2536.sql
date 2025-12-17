@@ -243,6 +243,23 @@ CREATE TABLE admin_report_action (
     id_report INTEGER NOT NULL REFERENCES event_report(id_report) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+-- R22 (security_question)
+CREATE TABLE security_question (
+    id_security_question INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    prompt TEXT NOT NULL UNIQUE
+);
+
+-- R23 (security_answer)
+CREATE TABLE security_answer (
+    id_security_answer INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_user INTEGER NOT NULL REFERENCES "user"(id_user) ON UPDATE CASCADE ON DELETE CASCADE,
+    question TEXT NOT NULL,
+    answer_hash TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
 --------------------------------------------------------------------
 
 --INDEXES
