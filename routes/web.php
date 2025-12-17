@@ -105,7 +105,11 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 
 // Profile
 Route::middleware('auth')->controller(ProfileController::class)->group(function () {
-    Route::get('/profile', 'show')->name('profile.show');       // RU01
     Route::get('/profile/edit', 'edit')->name('profile.edit');  // RU02
     Route::put('/profile/update', 'update')->name('profile.update');
+    Route::delete('/profile', 'destroy')->name('profile.destroy'); // RU07
+});
+
+Route::controller(ProfileController::class)->group(function () {
+    Route::get('/profile/{user?}', 'show')->name('profile.show');       // RU01
 });

@@ -65,12 +65,14 @@
                             </div>
                             
                             {{-- Action Buttons --}}
+                            @if(Auth::id() === $user->id_user)
                             <div class="mt-4 sm:mt-0 flex space-x-3 justify-center sm:justify-end">
                                 <a href="{{ route('profile.edit') }}" class="inline-flex items-center px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-800 focus:ring-4 focus:ring-slate-200 transition-all shadow-lg shadow-slate-900/20">
                                     <i class="fas fa-pen-to-square mr-2"></i>
                                     Edit Profile
                                 </a>
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Profile;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -12,9 +13,17 @@ use Illuminate\View\View;
 class ProfileController extends Controller
 {
     // RU01
-    public function show(): View
+    public function show(User $user = null)
     {
-        $user = Auth::user();
+        // If no user provided, show current user
+        if (!$user) {
+            $user = Auth::user();
+        }
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
         // Ensure profile exists (lazy creation if missing)
         if (!$user->profile) {
             Profile::create(['id_user' => $user->id_user]);
@@ -81,4 +90,35 @@ class ProfileController extends Controller
         return redirect()->route('profile.show')
             ->with('success', 'Your profile has been updated successfully.');
     }
+
+    // RU07 - Delete Account
+    public function destroy(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|current_password',
+        ]);
+
+        $user = Auth::user();
+
+        // Anonymize and Soft Delete
+        $user->name = 'Deleted User';
+        $user->email = 'deleted_' . $user->id_user . '_' . time() . '@eventsquare.local';
+        $user->password_hash = Hash::make(uniqid()); // Scramble password
+        $user->status = 'deleted';
+        $user->save();
+
+        // Delete profile picture if exists
+        if ($user->profile && $user->profile->photo_url) {
+            Storage::disk('public')->delete($user->profile->photo_url);
+            $user->profile->update(['photo_url' => null]);
+        }
+
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/')->with('success', 'Your account has been successfully deleted.');
+    }
 }
+

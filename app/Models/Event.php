@@ -209,10 +209,17 @@ class Event extends Model
     }
 
     // Check if the event can be edited.
-    // Events that have ended cannot be edited.
+    // Events that have ended or are canceled cannot be edited.
     public function getIsEditableAttribute(): bool
     {
-        return !$this->is_past;
+        return !$this->is_past && $this->status !== 'canceled';
+    }
+
+    // Check if the event can be canceled.
+    // Only published events that haven't ended can be canceled.
+    public function getIsCancelableAttribute(): bool
+    {
+        return $this->status === 'published' && !$this->is_past;
     }
 
     // Check if the event can be hard deleted.
