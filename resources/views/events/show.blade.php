@@ -336,6 +336,14 @@
                         </div>
                     </div>
 
+                    @auth
+                        <div class="mt-6 pt-6 border-t border-slate-100">
+                            <button onclick="openReportModal()" class="flex items-center gap-2 text-sm text-slate-500 hover:text-red-600 transition">
+                                <i class="fas fa-flag"></i> Report Event
+                            </button>
+                        </div>
+                    @endauth
+
                     {{-- Join Action --}}
                     @auth
                         @php
@@ -602,6 +610,41 @@
         </div>
     </div>
 
+    {{-- Report Modal --}}
+    <div id="report-modal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeReportModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-10">
+                <form action="{{ route('events.report', $event->id_event) }}" method="POST">
+                    @csrf
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fas fa-flag text-red-500"></i> Report Event
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <p class="text-sm text-slate-600">Please describe why you are reporting this event. This will be reviewed by an administrator.</p>
+                            <div>
+                                <label for="report-reason" class="block text-sm font-medium text-slate-700">Reason</label>
+                                <textarea name="reason" id="report-reason" rows="4" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g., Inappropriate content, spam, etc."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Submit Report
+                        </button>
+                        <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onclick="closeReportModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Modal Logic
         let activeForm = null;
@@ -635,6 +678,14 @@
 
         function closeCreatePollModal() {
             document.getElementById('create-poll-modal').classList.add('hidden');
+        }
+
+        function openReportModal() {
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
         }
 
         function addPollOption() {

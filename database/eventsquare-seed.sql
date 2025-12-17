@@ -252,7 +252,15 @@ CREATE TABLE admin_report_action (
 	action admin_report_action_type NOT NULL,
 	id_report INTEGER NOT NULL REFERENCES event_report(id_report) ON UPDATE CASCADE ON DELETE CASCADE
 );
-
+--R22 (sessions) - Laravel Session Table
+CREATE TABLE sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id INTEGER REFERENCES "user"(id_user) ON DELETE SET NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    payload TEXT NOT NULL,
+    last_activity INTEGER NOT NULL
+);
 --------------------------------------------------------------------
 --INDEXES
 --------------------------------------------------------------------
@@ -266,6 +274,9 @@ USING idx_event_public_active_date;
 CREATE INDEX idx_participation_event_user 
 ON participation 
 USING btree (id_event, id_user);
+
+CREATE INDEX sessions_user_id_index ON sessions(user_id);
+CREATE INDEX sessions_last_activity_index ON sessions(last_activity);
 
 -- (FTS column, function, trigger, and business-rule triggers
 -- should be appended here from the full A6 SQL if they are defined

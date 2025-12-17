@@ -90,6 +90,9 @@ Route::controller(EventController::class)->group(function () {
     // Leave event (AT01)
     Route::post('/events/{event}/leave', 'leave')->name('events.leave')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
+    // Report event (RU11)
+    Route::post('/events/{event}/report', [\App\Http\Controllers\ReportController::class, 'store'])->name('events.report')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
+
 });
 
 // Invitations (OR03 invite, RU10 respond)
