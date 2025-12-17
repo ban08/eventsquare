@@ -468,6 +468,27 @@ class EventController extends Controller
             return back()->with('error', 'You are already participating in this event.');
         }
 
+        // Check for pending invitation (Auto-accept if exists)
+        $pendingInvitation = \App\Models\Invitation::where('id_event', $event->id_event)
+            ->where('id_invitee', $user->id_user)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pendingInvitation) {
+            DB::transaction(function () use ($event, $user, $pendingInvitation) {
+                // Accept invitation
+                $pendingInvitation->update([
+                    'status' => 'accepted',
+                    'responded_at' => now()
+                ]);
+
+                // Create participation
+                $event->participants()->attach($user->id_user, ['joined_at' => now()]);
+            });
+
+            return back()->with('success', 'You had a pending invitation. You have successfully joined the event!');
+        }
+
         // Create new application
         $event->applications()->create([
             'id_user' => $user->id_user,

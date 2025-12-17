@@ -63,6 +63,27 @@ class InvitationController extends Controller
             return back()->withErrors(['invitee_email' => 'User already has an active invitation.']);
         }
 
+        // Check for pending application (Auto-approve if exists)
+        $pendingApplication = \App\Models\Application::where('id_event', $event->id_event)
+            ->where('id_user', $inviteeUser->id_user)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pendingApplication) {
+            DB::transaction(function () use ($event, $inviteeUser, $pendingApplication) {
+                // Approve application
+                $pendingApplication->update([
+                    'status' => 'approved',
+                    'decided_at' => now()
+                ]);
+
+                // Create participation
+                $event->participants()->attach($inviteeUser->id_user, ['joined_at' => now()]);
+            });
+
+            return back()->with('success', 'User had a pending application and has been added to the event!');
+        }
+
         // Create invitation with sequence safety (fix sequence misalignment if needed)
         $invitation = null;
         try {
