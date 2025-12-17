@@ -113,30 +113,46 @@
                         <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: {{ min(100, ($event->current_participants_count / $event->capacity) * 100) }}%"></div>
                     </div>
 
-                    @if($event->participants->count() > 0)
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            @foreach($event->participants->take(8) as $participant)
-                                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition">
-                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0">
-                                        {{ substr($participant->name, 0, 1) }}
-                                    </div>
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-medium text-slate-900 truncate">{{ $participant->name }}</p>
-                                        <p class="text-xs text-slate-500 truncate">Member</p>
-                                    </div>
+                    @auth
+                        @if($event->participants->count() > 0)
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                @foreach($event->participants->take(8) as $participant)
+                                    <a href="{{ route('profile.show', $participant->id_user) }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition group">
+                                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 group-hover:bg-indigo-200 transition">
+                                            {{ substr($participant->name, 0, 1) }}
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-700 transition">{{ $participant->name }}</p>
+                                            <p class="text-xs text-slate-500 truncate">Member</p>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
+                            @if($event->participants->count() > 0)
+                                <div class="mt-4 text-center">
+                                    <button onclick="openAttendeesModal()" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none">
+                                        @if($event->participants->count() > 8)
+                                            +{{ $event->participants->count() - 8 }} more attendees
+                                        @else
+                                            View all attendees
+                                        @endif
+                                    </button>
                                 </div>
-                            @endforeach
-                        </div>
-                        @if($event->participants->count() > 8)
-                            <div class="mt-4 text-center">
-                                <span class="text-sm text-slate-500">+{{ $event->participants->count() - 8 }} more attendees</span>
+                            @endif
+                        @else
+                            <div class="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                <p class="text-slate-500 text-sm">Be the first to join!</p>
                             </div>
                         @endif
                     @else
                         <div class="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                            <p class="text-slate-500 text-sm">Be the first to join!</p>
+                            <div class="mb-2">
+                                <i class="fas fa-lock text-slate-300 text-2xl"></i>
+                            </div>
+                            <p class="text-slate-500 text-sm">Login to see who is attending.</p>
+                            <a href="{{ route('login') }}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2 inline-block">Login now</a>
                         </div>
-                    @endif
+                    @endauth
                 </div>
 
                 {{-- Organizer Only: Applications --}}
@@ -443,6 +459,56 @@
         on-confirm="confirmAdminDelete()"
     />
 
+    {{-- Attendees Modal --}}
+    <div id="attendees-modal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {{-- Overlay --}}
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeAttendeesModal()"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            {{-- Modal Panel --}}
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-10">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-bold text-slate-900 mb-4 flex items-center gap-2" id="modal-title">
+                                <i class="fas fa-users text-indigo-500"></i> All Attendees ({{ $event->participants->count() }})
+                            </h3>
+                            <div class="mt-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                                <div class="space-y-3">
+                                    @foreach($event->participants as $participant)
+                                        <a href="{{ route('profile.show', $participant->id_user) }}" class="block w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition border border-transparent hover:border-slate-100 cursor-pointer group">
+                                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 group-hover:bg-indigo-200 transition">
+                                                {{ substr($participant->name, 0, 1) }}
+                                            </div>
+                                            <div class="min-w-0 flex-1 text-left">
+                                                <span class="text-sm font-medium text-slate-900 group-hover:text-indigo-600 truncate block">
+                                                    {{ $participant->name }}
+                                                </span>
+                                                <p class="text-xs text-slate-500 truncate">Member</p>
+                                            </div>
+                                            @if(Auth::id() === $participant->id_user)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                    You
+                                                </span>
+                                            @endif
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onclick="closeAttendeesModal()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Modal Logic
         let activeForm = null;
@@ -460,6 +526,14 @@
         function openAdminDeleteModal(formId) {
             activeForm = document.getElementById(formId);
             document.getElementById('admin-delete-modal').classList.remove('hidden');
+        }
+
+        function openAttendeesModal() {
+            document.getElementById('attendees-modal').classList.remove('hidden');
+        }
+
+        function closeAttendeesModal() {
+            document.getElementById('attendees-modal').classList.add('hidden');
         }
 
         function confirmCancel() { if(activeForm) activeForm.submit(); }
