@@ -106,10 +106,16 @@
                                 {{ Auth::user()->name }}
                             </a>
                             @can('admin')
-                            <a href="{{ route('admin.users.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
-                                <i class="fas fa-shield-alt mr-1 text-[11px]"></i>
-                                <span>Admin</span>
-                            </a>
+                            <div class="flex gap-2">
+                                <a href="{{ route('admin.users.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                                    <i class="fas fa-users mr-1 text-[11px]"></i>
+                                    <span>Users</span>
+                                </a>
+                                <a href="{{ route('admin.reports.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                                    <i class="fas fa-flag mr-1 text-[11px]"></i>
+                                    <span>Reports</span>
+                                </a>
+                            </div>
                             @endcan
                         </span>
 

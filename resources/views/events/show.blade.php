@@ -337,11 +337,13 @@
                     </div>
 
                     @auth
-                        <div class="mt-6 pt-6 border-t border-slate-100">
-                            <button onclick="openReportModal()" class="flex items-center gap-2 text-sm text-slate-500 hover:text-red-600 transition">
-                                <i class="fas fa-flag"></i> Report Event
-                            </button>
-                        </div>
+                        @if(Auth::id() !== $event->id_organizer)
+                            <div class="mt-6 pt-6 border-t border-slate-100">
+                                <button onclick="openReportModal()" class="flex items-center gap-2 text-sm text-slate-500 hover:text-red-600 transition">
+                                    <i class="fas fa-flag"></i> Report Event
+                                </button>
+                            </div>
+                        @endif
                     @endauth
 
                     {{-- Join Action --}}
@@ -353,7 +355,7 @@
                             $isAdmin = Gate::allows('admin');
                         @endphp
 
-                        @if(!$isAdmin && !$isOrganizer)
+                        @if(!$isAdmin)
                             <div class="mt-8 pt-6 border-t border-slate-100">
                                 @if($alreadyParticipant)
                                     @if($event->effective_status === 'canceled')

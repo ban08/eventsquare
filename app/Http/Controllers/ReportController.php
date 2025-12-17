@@ -11,6 +11,11 @@ class ReportController extends Controller
 {
     public function store(Request $request, Event $event)
     {
+        // Prevent organizers from reporting their own events
+        if (Auth::id() === $event->id_organizer) {
+            return back()->withErrors(['error' => 'You cannot report your own event.']);
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:1000',
         ]);

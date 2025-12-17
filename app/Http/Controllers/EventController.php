@@ -242,6 +242,27 @@ class EventController extends Controller
     // Display a single event so that people can find it.
     public function show(Event $event)
     {
+        // BR02: Private events are hidden from search and public view.
+        // Only accessible by: Organizer, Participants, Invitees, Admins.
+        if ($event->visibility === 'private') {
+            $canView = false;
+            if (Auth::check()) {
+                $user = Auth::user();
+                // 1. Organizer
+                if ($user->id_user === $event->id_organizer) $canView = true;
+                // 2. Admin
+                elseif (Gate::allows('admin')) $canView = true;
+                // 3. Participant
+                elseif ($event->participations()->where('id_user', $user->id_user)->whereNull('left_at')->exists()) $canView = true;
+                // 4. Invitee (Pending or Accepted)
+                elseif ($event->invitations()->where('id_invitee', $user->id_user)->whereIn('status', ['pending', 'accepted'])->exists()) $canView = true;
+            }
+            
+            if (!$canView) {
+                abort(403, 'This event is private.');
+            }
+        }
+
         // Eager-load invitations + invitee user to avoid N+ queries when listing invitations.
         $event->load([
             'invitations.invitee', 
@@ -331,6 +352,11 @@ class EventController extends Controller
         if ($event->status === 'canceled') {
             abort(403, 'Canceled events cannot be edited.');
         }
+
+        // BR06: Event edits locked 24h before start
+        if ($event->start_at->copy()->subHours(24)->isPast()) {
+            abort(403, 'Events cannot be edited less than 24 hours before they start.');
+        }
         
         // 1. Validate inputs (same as in store())
         $validated = $request->validate([
@@ -403,6 +429,11 @@ class EventController extends Controller
         // Only published events can be canceled
         if ($event->status !== 'published') {
             return back()->with('error', 'Only published events can be canceled.');
+        }
+
+        // BR06: Event cancellation locked 24h before start
+        if ($event->start_at->copy()->subHours(24)->isPast()) {
+            return back()->with('error', 'Events cannot be canceled less than 24 hours before they start.');
         }
 
         // Update the event status to canceled
@@ -509,9 +540,9 @@ class EventController extends Controller
         }
 
         // Organizer cannot apply to their own event
-        if ($event->id_organizer === $user->id_user) {
-            return back()->with('error', 'Organizers cannot apply to their own event.');
-        }
+        // if ($event->id_organizer === $user->id_user) {
+        //     return back()->with('error', 'Organizers cannot apply to their own event.');
+        // }
 
         // Registration closes 24 hours before event start
         if ($event->start_at->copy()->subHours(24)->isPast()) {

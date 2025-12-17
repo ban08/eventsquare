@@ -24,7 +24,7 @@ CREATE TYPE notification_message AS ENUM ('invited', 'event updated', 'event can
 CREATE TYPE event_status AS ENUM ('published', 'completed', 'canceled', 'draft', 'deleted');
 CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'declined', 'canceled', 'expired');
 CREATE TYPE application_status AS ENUM ('pending', 'approved', 'rejected', 'canceled');
-CREATE TYPE report_status AS ENUM ('dismissed', 'open');
+CREATE TYPE report_status AS ENUM ('dismissed', 'open', 'resolved');
 CREATE TYPE vote_value AS ENUM ('-1', '1');
 CREATE TYPE admin_user_action_type AS ENUM ('block user', 'unblock user', 'create user account', 'delete user account', 'edit user account');
 CREATE TYPE admin_event_action_type AS ENUM ('delete event');

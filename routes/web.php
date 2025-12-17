@@ -50,6 +50,10 @@ Route::middleware(['auth', 'can:admin'])
         Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy'); // AD06
+
+        // AD04 - Manage Event Reports
+        Route::get('/reports', [\App\Http\Controllers\AdminReportController::class, 'index'])->name('reports.index');
+        Route::put('/reports/{report}', [\App\Http\Controllers\AdminReportController::class, 'update'])->name('reports.update');
     });
 
 // Event management routes 

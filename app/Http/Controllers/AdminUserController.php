@@ -146,8 +146,16 @@ class AdminUserController extends Controller
             if ($request->hasFile('photo')) {
                 $file = $request->file('photo');
                 $path = $file->store('profile_photos', 'public');
-                $user->profile->photo_url = 'storage/' . $path;
-                $user->profile->save();
+                
+                if ($user->profile) {
+                    $user->profile->photo_url = 'storage/' . $path;
+                    $user->profile->save();
+                } else {
+                    // Create profile if it doesn't exist
+                    $user->profile()->create([
+                        'photo_url' => 'storage/' . $path
+                    ]);
+                }
             }
 
             if ($admin) {
