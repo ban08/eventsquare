@@ -15,7 +15,8 @@ class Application extends Model
         'id_event',
         'id_user',
         'status',
-        'created_at'
+        'created_at',
+        'decided_at'
     ];
 
     //cada candidatura pertence a 1 user

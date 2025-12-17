@@ -22,8 +22,23 @@ class EventController extends Controller
 
         // AD01: Admins can browse ALL events, regular users only see public/published
         if (!Gate::allows('admin')) {
-            $query->where('visibility', 'public')
-                  ->where('status', 'published');
+            $query->where(function ($q) {
+                // Public and published events
+                $q->where(function ($sub) {
+                    $sub->where('visibility', 'public')
+                        ->where('status', 'published');
+                });
+
+                // OR events where the user is a participant or invited (even if private)
+                if (Auth::check()) {
+                    $userId = Auth::id();
+                    $q->orWhereHas('participations', function ($p) use ($userId) {
+                        $p->where('id_user', $userId);
+                    })->orWhereHas('invitations', function ($i) use ($userId) {
+                        $i->where('id_invitee', $userId);
+                    });
+                }
+            });
         }
 
         $search = trim((string) $request->input('q', ''));
@@ -214,7 +229,7 @@ class EventController extends Controller
     public function show(Event $event)
     {
         // Eager-load invitations + invitee user to avoid N+ queries when listing invitations.
-        $event->load(['invitations.invitee']);
+        $event->load(['invitations.invitee', 'applications.user']);
         return view('events.show', compact('event'));
     }
 
@@ -490,10 +505,19 @@ class EventController extends Controller
         }
 
         // Create new application
-        $event->applications()->create([
+        $application = $event->applications()->create([
             'id_user' => $user->id_user,
             'status'   => 'pending',    
             'created_at' => now()
+        ]);
+
+        // Notify organizer
+        \App\Models\Notification::create([
+            'id_user' => $event->id_organizer,
+            'message' => 'new application',
+            'id_event' => $event->id_event,
+            'id_application' => $application->id_application,
+            'created_at' => now(),
         ]);
 
         return back()->with('success', 'Your request to join this event was submitted!');

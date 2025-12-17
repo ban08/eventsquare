@@ -21,6 +21,7 @@ class Notification extends Model
         'message',
         'id_event',
         'id_invitation',
+        'id_application',
         'created_at',
         'read_at',
     ];
@@ -66,6 +67,14 @@ class Notification extends Model
     }
 
     /**
+     * The application related to this notification (optional).
+     */
+    public function application(): BelongsTo
+    {
+        return $this->belongsTo(Application::class, 'id_application');
+    }
+
+    /**
      * Check if notification has been read.
      */
     public function getIsReadAttribute(): bool
@@ -91,6 +100,9 @@ class Notification extends Model
         return match($this->message) {
             'invited' => 'You have been invited to an event',
             'event updated' => 'An event you\'re participating in has been updated',
+            'new application' => 'Someone applied to join your event',
+            'application accepted' => 'Your application to join an event was accepted',
+            'application rejected' => 'Your application to join an event was rejected',
             default => $this->message,
         };
     }

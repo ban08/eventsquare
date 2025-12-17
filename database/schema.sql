@@ -11,7 +11,7 @@ SET search_path TO lbaw2536;
 
 CREATE TYPE account_status AS ENUM ('active', 'blocked', 'deleted');
 CREATE TYPE event_visibility AS ENUM ('public', 'private');
-CREATE TYPE notification_message AS ENUM ('invited', 'event updated');
+CREATE TYPE notification_message AS ENUM ('invited', 'event updated', 'new application', 'application accepted', 'application rejected');
 CREATE TYPE event_status AS ENUM ('published', 'completed', 'canceled', 'draft', 'deleted');
 CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'declined', 'canceled', 'expired');
 CREATE TYPE application_status AS ENUM ('pending', 'approved', 'rejected', 'canceled');
@@ -197,6 +197,7 @@ CREATE TABLE notification (
     message notification_message,
     id_event INTEGER REFERENCES event(id_event) ON UPDATE CASCADE ON DELETE SET NULL,
     id_invitation INTEGER REFERENCES invitation(id_invitation) ON UPDATE CASCADE ON DELETE SET NULL,
+    id_application INTEGER REFERENCES application(id_application) ON UPDATE CASCADE ON DELETE SET NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     read_at TIMESTAMP,
     CHECK (read_at IS NULL OR read_at >= created_at)

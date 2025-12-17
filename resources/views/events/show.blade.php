@@ -139,6 +139,49 @@
                     @endif
                 </div>
 
+                {{-- Organizer Only: Applications --}}
+                @auth
+                    @if(Auth::id() === $event->id_organizer)
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-6">
+                            <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <i class="fas fa-clipboard-list text-indigo-500"></i> Manage Applications
+                            </h2>
+
+                            <div class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                @forelse($event->applications->where('status', 'pending') as $app)
+                                    <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
+                                        <div class="flex items-center gap-3">
+                                            <div class="h-8 w-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-medium text-slate-900">{{ $app->user->name ?? 'Unknown User' }}</p>
+                                                <p class="text-xs text-slate-500">Applied {{ $app->created_at ? \Carbon\Carbon::parse($app->created_at)->diffForHumans() : 'recently' }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <form action="{{ route('applications.accept', $app->id_application) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-200 transition">
+                                                    <i class="fas fa-check mr-1"></i> Accept
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('applications.reject', $app->id_application) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-200 transition">
+                                                    <i class="fas fa-times mr-1"></i> Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-slate-500 text-center py-4">No pending applications.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
+                @endauth
+
                 {{-- Organizer Only: Invitations --}}
                 @auth
                     @if(Auth::id() === $event->id_organizer)

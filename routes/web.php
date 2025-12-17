@@ -96,6 +96,12 @@ Route::middleware('auth')->controller(InvitationController::class)->group(functi
     Route::post('/invitations/{invitation}/decline', 'decline')->name('invitations.decline'); // RU10
 });
 
+// Applications (OR04 approve/reject)
+Route::middleware('auth')->controller(\App\Http\Controllers\ApplicationController::class)->group(function () {
+    Route::post('/applications/{application}/accept', 'accept')->name('applications.accept');
+    Route::post('/applications/{application}/reject', 'reject')->name('applications.reject');
+});
+
 // Notifications (includes RU10 invitations list)
 Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
