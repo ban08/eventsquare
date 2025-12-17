@@ -91,10 +91,14 @@
                     @else
                     <div class="flex items-center gap-4 text-sm text-gray-700">
                         @php
-                            // Lightweight pending invitations count (prototype; consider ViewComposer for production)
+                            // Count pending invitations + unread notifications for badge
                             $pendingInvCount = \App\Models\Invitation::where('id_invitee', Auth::id())
                                 ->where('status','pending')
                                 ->count();
+                            $unreadNotifCount = \App\Models\Notification::where('id_user', Auth::id())
+                                ->whereNull('read_at')
+                                ->count();
+                            $totalNotifCount = $pendingInvCount + $unreadNotifCount;
                         @endphp
                         <span class="flex items-center gap-2">
                             Welcome,&nbsp;
@@ -127,13 +131,13 @@
                             <span>Create event</span>
                         </a>
                         @endcannot
-                        {{-- BR13: Admins cannot participate, so no invites --}}
+                        {{-- BR13: Admins cannot participate, so no invites/notifications --}}
                         @cannot('admin')
-                        <a href="{{ route('invitations.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
-                            <i class="fas fa-envelope-open-text mr-1 text-[12px] text-indigo-600"></i>
-                            <span class="flex items-center gap-1">Invites
-                                @if($pendingInvCount > 0)
-                                    <span class="text-slate-700 font-semibold text-[10px] leading-none">({{ $pendingInvCount }})</span>
+                        <a href="{{ route('notifications.index') }}" class="inline-flex items-center rounded-full bg-white border border-indigo-100 px-3 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition">
+                            <i class="fas fa-bell mr-1 text-[12px] text-indigo-600"></i>
+                            <span class="flex items-center gap-1">Notifications
+                                @if($totalNotifCount > 0)
+                                    <span class="flex items-center justify-center bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[1.25rem] h-4 rounded-full leading-none shadow-sm">{{ $totalNotifCount }}</span>
                                 @endif
                             </span>
                         </a>

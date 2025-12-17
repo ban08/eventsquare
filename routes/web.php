@@ -90,7 +90,13 @@ Route::middleware('auth')->controller(InvitationController::class)->group(functi
     Route::post('/events/{event}/invite', 'invite')->name('invitations.invite'); // OR03
     Route::post('/invitations/{invitation}/accept', 'accept')->name('invitations.accept'); // RU10
     Route::post('/invitations/{invitation}/decline', 'decline')->name('invitations.decline'); // RU10
-    Route::get('/my-invitations', 'index')->name('invitations.index'); // RU10 list
+});
+
+// Notifications (includes RU10 invitations list)
+Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index'])->name('index');
+    Route::post('/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('markRead');
+    Route::post('/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('markAllRead');
 });
 
 // Profile

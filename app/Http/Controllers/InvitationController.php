@@ -95,7 +95,7 @@ class InvitationController extends Controller
         try {
             DB::table('notification')->insert([
                 'id_user'       => $inviteeUser->id_user,
-                'message'       => 'You have been invited to an event',
+                'message'       => 'invited',
                 'id_event'      => $event->id_event,
                 'id_invitation' => $invitation->id_invitation,
                 'created_at'    => now(),
