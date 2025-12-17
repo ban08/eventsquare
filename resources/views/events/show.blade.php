@@ -74,6 +74,19 @@
                         @endif
                     @endauth
 
+                    @guest
+                        @if(!$event->is_full && !$event->is_past)
+                            <div class="mt-8 flex justify-end">
+                                <a href="{{ route('login') }}"
+                                class="inline-flex items-center gap-2 rounded-full bg-green-600 px-6 py-2 text-base font-semibold text-white shadow-lg hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 transition">
+                                    <i class="fas fa-user-plus"></i>
+                                    Apply to Join Event
+                                </a>
+                            </div>
+                        @endif
+                    @endguest
+
+
 
                     {{-- Call to action --}}
                     <div class="mt-10 flex justify-end">
