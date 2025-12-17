@@ -268,6 +268,10 @@
                                     <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
                                         Event Full
                                     </button>
+                                @elseif($event->is_past)
+                                    <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
+                                        Event already ended
+                                    </button>
                                 @elseif($event->effective_status !== 'published')
                                     <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
                                         Event {{ ucfirst($event->effective_status) }}
@@ -289,7 +293,9 @@
                             </a>
                         </div>
                     @endauth
+
                 </div>
+
 
                 {{-- Mobile Actions (Visible only on small screens) --}}
                 @auth
@@ -308,6 +314,7 @@
                                     Cancel Event
                                 </button>
                             @endif
+
 
                             @if($event->can_hard_delete)
                                 <button onclick="openDeleteModal('delete-form-{{ $event->id_event }}')" class="block w-full text-center rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100">

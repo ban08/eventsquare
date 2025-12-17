@@ -440,6 +440,11 @@ class EventController extends Controller
             return back()->with('error', 'You can only apply to published events.');
         }
 
+        // Cannot apply if event has ended
+        if ($event->is_past) {
+        return back()->with('error', 'You can no longer apply to a past event.');
+        }
+
         // Cannot apply if event full
         if ($event->is_full) {
             return back()->with('error', 'This event is already full.');
