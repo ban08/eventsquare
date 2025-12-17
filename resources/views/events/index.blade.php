@@ -26,6 +26,8 @@
                     @foreach($tagFilters as $tagName)
                         <input type="hidden" name="tags[]" value="{{ $tagName }}">
                     @endforeach
+                    {{-- US05: Preserve sort order --}}
+                    <input type="hidden" name="sort" value="{{ $sort }}">
                     <button type="submit"
                             class="hidden sm:inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
                         Search
@@ -37,7 +39,7 @@
             <div class="mb-6">
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="text-sm font-medium text-slate-600">Filter by tags:</span>
-                    <a href="{{ route('events.index', request()->only('q')) }}"
+                    <a href="{{ route('events.index', request()->only(['q', 'sort'])) }}"
                        class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition
                               {{ empty($tagFilters) ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50' }}">
                         All
@@ -51,7 +53,7 @@
                             } else {
                                 $newTags = array_merge($tagFilters, [$tag->name]);
                             }
-                            $params = request()->only('q');
+                            $params = request()->only(['q', 'sort']);
                             if (!empty($newTags)) {
                                 $params['tags'] = $newTags;
                             }
@@ -72,9 +74,29 @@
                         @foreach($tagFilters as $tagName)
                             <strong class="capitalize">{{ $tagName }}</strong>@if(!$loop->last), @endif
                         @endforeach
-                        <a href="{{ route('events.index', request()->only('q')) }}" class="text-indigo-600 hover:underline ml-1">Clear all</a>
+                        <a href="{{ route('events.index', request()->only(['q', 'sort'])) }}" class="text-indigo-600 hover:underline ml-1">Clear all</a>
                     </p>
                 @endif
+            </div>
+
+            {{-- US05: Sort Controls --}}
+            <div class="flex justify-end mb-4">
+                <form method="GET" action="{{ route('events.index') }}" class="flex items-center gap-2">
+                    <input type="hidden" name="q" value="{{ $search }}">
+                    @foreach($tagFilters as $tag)
+                        <input type="hidden" name="tags[]" value="{{ $tag }}">
+                    @endforeach
+                    
+                    <label for="sort" class="text-sm font-medium text-slate-700">Sort by:</label>
+                    <select name="sort" id="sort" onchange="this.form.submit()" 
+                            class="rounded-lg border-slate-300 text-sm focus:ring-indigo-500 focus:border-indigo-500 py-1.5 pl-3 pr-8 shadow-sm cursor-pointer">
+                        <option value="date_asc" {{ $sort === 'date_asc' ? 'selected' : '' }}>Date (Soonest)</option>
+                        <option value="date_desc" {{ $sort === 'date_desc' ? 'selected' : '' }}>Date (Latest)</option>
+                        @if($search)
+                            <option value="relevance" {{ $sort === 'relevance' ? 'selected' : '' }}>Relevance</option>
+                        @endif
+                    </select>
+                </form>
             </div>
 
             <div class="mt-8" id="event-list-wrapper">

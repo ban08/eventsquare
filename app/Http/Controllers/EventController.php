@@ -59,17 +59,27 @@ class EventController extends Controller
             }
         }
 
+        // US05: Sort Events by Date
+        $sort = $request->input('sort', 'date_asc');
+
         // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)
         // Uses search_fts tsvector column with weights: title='A', description/venue='B'
         if ($search !== '') {
             // Convert search terms to tsquery format with prefix matching
             $tsquery = $this->buildTsQuery($search);
             
-            $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery])
-                  ->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery])
-                  ->orderBy('start_at', 'asc');
-        } else {
+            $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery]);
+
+            if ($sort === 'relevance') {
+                $query->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery]);
+            }
+        }
+
+        // Apply date sorting
+        if ($sort === 'date_asc') {
             $query->orderBy('start_at', 'asc');
+        } elseif ($sort === 'date_desc') {
+            $query->orderBy('start_at', 'desc');
         }
 
         $events = $query->paginate(10)->withQueryString();
@@ -82,6 +92,7 @@ class EventController extends Controller
             'search' => $search,
             'tagFilters' => $tagFilters,
             'allTags' => $allTags,
+            'sort' => $sort,
         ]);
     }
 
