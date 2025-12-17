@@ -288,9 +288,19 @@
                         @endif
                     @else
                         <div class="mt-8 pt-6 border-t border-slate-100">
-                            <a href="{{ route('login') }}" class="block w-full text-center rounded-xl bg-indigo-600 p-4 text-white font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
-                                Login to Join
-                            </a>
+                            @if($event->is_past)
+                                <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
+                                    Event already ended
+                                </button>
+                            @elseif($event->is_full)
+                                <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
+                                    Event Full
+                                </button>
+                            @else
+                                <a href="{{ route('login') }}" class="block w-full text-center rounded-xl bg-indigo-600 p-4 text-white font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">
+                                    Login to Join
+                                </a>
+                            @endif
                         </div>
                     @endauth
 
