@@ -278,9 +278,145 @@ USING btree (id_event, id_user);
 CREATE INDEX sessions_user_id_index ON sessions(user_id);
 CREATE INDEX sessions_last_activity_index ON sessions(last_activity);
 
--- (FTS column, function, trigger, and business-rule triggers
--- should be appended here from the full A6 SQL if they are defined
--- after these indexes.)
+--------------------------------------------------------------------
+-- FTS & TRIGGERS
+--------------------------------------------------------------------
+
+-- 1) Add a column to store the computed tsvector
+ALTER TABLE event
+ADD COLUMN IF NOT EXISTS search_fts tsvector;
+
+-- 2) Function to keep the tsvector up to date
+CREATE OR REPLACE FUNCTION event_search_update()
+RETURNS trigger AS $$
+BEGIN
+  NEW.search_fts :=
+      setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
+      setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
+      setweight(to_tsvector('english', COALESCE(NEW.venue, '')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+-- 3) Trigger to run the function on INSERT/UPDATE
+DROP TRIGGER IF EXISTS trg_event_search_update ON event;
+CREATE TRIGGER trg_event_search_update
+BEFORE INSERT OR UPDATE ON event
+FOR EACH ROW
+EXECUTE FUNCTION event_search_update();
+
+-- 4) GIN index over the tsvector column
+CREATE INDEX IF NOT EXISTS idx_event_fts
+ON event
+USING GIN (search_fts);
+
+-- 5) Event capacity limit
+CREATE OR REPLACE FUNCTION check_event_capacity() RETURNS TRIGGER AS $$
+DECLARE
+    current_count INTEGER;
+    max_capacity INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO current_count FROM participation WHERE id_event = NEW.id_event AND left_at IS NULL;
+    SELECT capacity INTO max_capacity FROM event WHERE id_event = NEW.id_event;
+    
+    IF current_count >= max_capacity THEN
+        RAISE EXCEPTION 'Event is full';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 6) Registration deadline (24h before start)
+CREATE OR REPLACE FUNCTION registration_deadline() RETURNS TRIGGER AS $$
+DECLARE
+    event_start TIMESTAMP;
+BEGIN
+    SELECT start_at INTO event_start FROM event WHERE id_event = NEW.id_event;
+    
+    IF NOW() > event_start - INTERVAL '24 hours' THEN
+        RAISE EXCEPTION 'Registration closed 24 hours before event start';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 7) Participant activity window (24h before event)
+CREATE OR REPLACE FUNCTION check_event_activity_window(p_event_id INTEGER)
+RETURNS VOID AS $$
+DECLARE
+    start_time TIMESTAMP;
+BEGIN
+    SELECT start_at INTO start_time FROM event WHERE id_event = p_event_id;
+    IF CURRENT_TIMESTAMP >= (start_time - INTERVAL '24 hours') THEN
+        RAISE EXCEPTION 'Activity closed for event %', p_event_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Comment activity
+CREATE OR REPLACE FUNCTION trg_comment_activity_window() RETURNS trigger AS $$
+BEGIN
+    PERFORM check_event_activity_window(NEW.id_event);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Upload activity
+CREATE OR REPLACE FUNCTION trg_upload_activity_window() RETURNS trigger AS $$
+BEGIN
+    PERFORM check_event_activity_window(NEW.id_event);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Comment Vote activity
+CREATE OR REPLACE FUNCTION trg_comment_vote_activity_window() RETURNS trigger AS $$
+DECLARE
+    event_id INTEGER;
+BEGIN
+    SELECT id_event INTO event_id FROM comment WHERE id_comment = NEW.id_comment;
+    PERFORM check_event_activity_window(event_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Poll Vote activity
+CREATE OR REPLACE FUNCTION trg_poll_vote_activity_window() RETURNS trigger AS $$
+DECLARE
+    event_id INTEGER;
+BEGIN
+    SELECT id_event INTO event_id FROM poll WHERE id_poll = NEW.id_poll;
+    PERFORM check_event_activity_window(event_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 8) Event Edit Deadline (24h before start)
+CREATE OR REPLACE FUNCTION event_edit_deadline() RETURNS trigger AS $$
+DECLARE
+    hours_left INTERVAL;
+    critical_change BOOLEAN := FALSE;
+BEGIN
+    hours_left := OLD.start_at - CURRENT_TIMESTAMP;
+
+    IF NEW.title        IS DISTINCT FROM OLD.title        OR
+       NEW.description  IS DISTINCT FROM OLD.description  OR
+       NEW.visibility   IS DISTINCT FROM OLD.visibility   OR
+       NEW.status       IS DISTINCT FROM OLD.status       OR
+       NEW.capacity     IS DISTINCT FROM OLD.capacity     OR
+       NEW.start_at     IS DISTINCT FROM OLD.start_at     OR
+       NEW.end_at       IS DISTINCT FROM OLD.end_at       OR
+       NEW.venue        IS DISTINCT FROM OLD.venue THEN
+        critical_change := TRUE;
+    END IF;
+
+    IF critical_change AND hours_left < INTERVAL '24 hours' THEN
+        RAISE EXCEPTION 'Event % cannot be edited less than 24h before start', OLD.id_event;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 --------------------------------------------------------------------
 -- POPULATION (from lbaw2536_population.sql)
@@ -536,3 +672,59 @@ SELECT setval('lbaw2536.poll_option_id_option_seq', 9, true);
 SELECT setval('lbaw2536.event_report_id_report_seq', 4, true);
 SELECT setval('lbaw2536.admin_action_id_action_seq', 3, true);
 SELECT setval('lbaw2536.upload_id_upload_seq', 5, true);
+
+--------------------------------------------------------------------
+-- BUSINESS RULE TRIGGERS (Applied AFTER population to allow historical data)
+--------------------------------------------------------------------
+
+-- 5) Event capacity limit
+DROP TRIGGER IF EXISTS trg_check_event_capacity ON participation;
+CREATE TRIGGER trg_check_event_capacity
+BEFORE INSERT ON participation
+FOR EACH ROW
+EXECUTE FUNCTION check_event_capacity();
+
+-- 6) Registration deadline
+DROP TRIGGER IF EXISTS trg_deadline_application ON application;
+CREATE TRIGGER trg_deadline_application
+BEFORE INSERT ON application
+FOR EACH ROW
+EXECUTE FUNCTION registration_deadline();
+
+DROP TRIGGER IF EXISTS trg_deadline_participation ON participation;
+CREATE TRIGGER trg_deadline_participation
+BEFORE INSERT ON participation
+FOR EACH ROW
+EXECUTE FUNCTION registration_deadline();
+
+-- 7) Activity Windows
+DROP TRIGGER IF EXISTS trg_comment_activity_window ON comment;
+CREATE TRIGGER trg_comment_activity_window
+BEFORE INSERT ON comment
+FOR EACH ROW
+EXECUTE FUNCTION trg_comment_activity_window();
+
+DROP TRIGGER IF EXISTS trg_upload_activity_window ON upload;
+CREATE TRIGGER trg_upload_activity_window
+BEFORE INSERT ON upload
+FOR EACH ROW
+EXECUTE FUNCTION trg_upload_activity_window();
+
+DROP TRIGGER IF EXISTS trg_comment_vote_activity_window ON comment_vote;
+CREATE TRIGGER trg_comment_vote_activity_window
+BEFORE INSERT ON comment_vote
+FOR EACH ROW
+EXECUTE FUNCTION trg_comment_vote_activity_window();
+
+DROP TRIGGER IF EXISTS trg_poll_vote_activity_window ON poll_vote;
+CREATE TRIGGER trg_poll_vote_activity_window
+BEFORE INSERT ON poll_vote
+FOR EACH ROW
+EXECUTE FUNCTION trg_poll_vote_activity_window();
+
+-- 8) Event Edit Deadline
+DROP TRIGGER IF EXISTS trg_event_edit_deadline ON event;
+CREATE TRIGGER trg_event_edit_deadline
+BEFORE UPDATE ON event
+FOR EACH ROW
+EXECUTE FUNCTION event_edit_deadline();

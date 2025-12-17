@@ -69,10 +69,12 @@ class EventController extends Controller
             // Convert search terms to tsquery format with prefix matching
             $tsquery = $this->buildTsQuery($search);
             
-            $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery]);
+            if ($tsquery) {
+                $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery]);
 
-            if ($sort === 'relevance') {
-                $query->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery]);
+                if ($sort === 'relevance') {
+                    $query->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery]);
+                }
             }
         }
 
