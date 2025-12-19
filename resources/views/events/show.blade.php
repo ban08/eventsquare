@@ -346,45 +346,25 @@
                         @endif
                     @endauth
 
-                    {{-- Join Action --}}
+                    {{-- Apply to an Event --}}
                     @auth
                         @php
-                            $alreadyParticipant = $isParticipant;
-                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id() && $a->status !== 'canceled');
+                            $alreadyParticipant = $event->participants->contains(Auth::id());
+                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id());
                             $isOrganizer = $event->id_organizer == Auth::id();
                             $isAdmin = Gate::allows('admin');
                         @endphp
 
-                        @if(!$isAdmin)
+                        @if(!$isAdmin && !$isOrganizer)
                             <div class="mt-8 pt-6 border-t border-slate-100">
                                 @if($alreadyParticipant)
-                                    @if($event->effective_status === 'canceled')
-                                        <div class="w-full rounded-xl bg-red-50 border border-red-200 p-4 text-center">
-                                            <div class="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2">
-                                                <i class="fas fa-ban text-xl"></i>
-                                            </div>
-                                            <h4 class="text-red-900 font-semibold">Event Canceled</h4>
-                                            <p class="text-red-700 text-xs mt-1">This event has been canceled by the organizer.</p>
+                                    <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                                        <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
+                                            <i class="fas fa-check text-xl"></i>
                                         </div>
-                                    @else
-                                        <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center mb-3">
-                                            <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
-                                                <i class="fas fa-check text-xl"></i>
-                                            </div>
-                                            <h4 class="text-green-900 font-semibold">You're going!</h4>
-                                            <p class="text-green-700 text-xs mt-1">See you there.</p>
-                                        </div>
-
-                                        {{-- Leave Event Button (AT01) --}}
-                                        @if(!$event->is_past && $event->start_at->copy()->subHours(24)->isFuture())
-                                            <form action="{{ route('events.leave', $event) }}" method="POST" onsubmit="return confirm('Are you sure you want to leave this event?');">
-                                                @csrf
-                                                <button type="submit" class="w-full rounded-xl bg-white border border-red-200 p-3 text-red-600 font-medium hover:bg-red-50 transition text-sm">
-                                                    Leave Event
-                                                </button>
-                                            </form>
-                                        @endif
-                                    @endif
+                                        <h4 class="text-green-900 font-semibold">You're going!</h4>
+                                        <p class="text-green-700 text-xs mt-1">See you there.</p>
+                                    </div>
                                 @elseif($alreadyApplied)
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">
                                         <div class="mx-auto h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-2">
