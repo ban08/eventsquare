@@ -30,6 +30,10 @@ class InvitationController extends Controller
             return back()->withErrors(['invitee_email' => 'Cannot send invitations to ' . $effectiveStatus . ' events.']);
         }
 
+        if ($event->is_full) {
+            return back()->withErrors(['invitee_email' => 'Event is full. Cannot invite more participants.']);
+        }
+
         // Validate email instead of raw user ID
         $validated = $request->validate([
             'invitee_email' => ['required', 'email', 'exists:user,email'],
@@ -173,6 +177,19 @@ class InvitationController extends Controller
                 return response()->json(['message' => 'Cannot join a ' . $effectiveStatus . ' event.'], 422);
             }
             return back()->withErrors(['invitation' => 'Cannot join a ' . $effectiveStatus . ' event.']);
+        }
+
+        $alreadyParticipating = DB::table('participation')
+            ->where('id_event', $event->id_event)
+            ->where('id_user', $invitation->id_invitee)
+            ->whereNull('left_at')
+            ->exists();
+
+        if (!$alreadyParticipating && $event->is_full) {
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Event is full.'], 422);
+            }
+            return back()->withErrors(['invitation' => 'Event is full.']);
         }
 
         // Idempotency: If already accepted, just return success (and ensure participation)

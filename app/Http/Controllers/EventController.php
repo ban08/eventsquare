@@ -384,6 +384,18 @@ class EventController extends Controller
                 ->withInput();
         }
 
+        $currentParticipants = $event->participations()
+            ->whereNull('left_at')
+            ->count();
+
+        if ($validated['capacity'] < $currentParticipants) {
+            return back()
+                ->withErrors([
+                    'capacity' => 'Capacity cannot be lower than current attendees (' . $currentParticipants . ').',
+                ])
+                ->withInput();
+        }
+
         // 3. Update event fields
         $event->update([
             // 'title'       => $validated['title'], --- don't edit
@@ -556,12 +568,22 @@ class EventController extends Controller
             return back()->with('error', 'This event is already full.');
         }
 
-        // Cannot apply twice
-        $alreadyApplied = $event->applications()
+        // Cannot apply twice, but allow re-apply if previously rejected
+        $existingApplication = $event->applications()
             ->where('id_user', $user->id_user)
-            ->exists();
+            ->first();
 
-        if ($alreadyApplied) {
+        if ($existingApplication) {
+            if ($existingApplication->status === 'rejected') {
+                $existingApplication->update([
+                    'status' => 'pending',
+                    'created_at' => now(),
+                    'decided_at' => null,
+                ]);
+
+                return back()->with('success', 'Your request to join this event was submitted!');
+            }
+
             return back()->with('error', 'You have already applied to this event.');
         }
 

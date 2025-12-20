@@ -350,7 +350,8 @@
                     @auth
                         @php
                             $alreadyParticipant = $event->participants->contains(Auth::id());
-                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id());
+                            $userApplication = $event->applications->firstWhere('id_user', Auth::id());
+                            $alreadyApplied = $userApplication !== null;
                             $isOrganizer = $event->id_organizer == Auth::id();
                             $isAdmin = Gate::allows('admin');
                         @endphp
@@ -365,13 +366,43 @@
                                         <h4 class="text-green-900 font-semibold">You're going!</h4>
                                         <p class="text-green-700 text-xs mt-1">See you there.</p>
                                     </div>
-                                @elseif($alreadyApplied)
+                                @elseif($userApplication && $userApplication->status === 'pending')
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">
                                         <div class="mx-auto h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-2">
                                             <i class="fas fa-clock text-xl"></i>
                                         </div>
                                         <h4 class="text-yellow-900 font-semibold">Application Pending</h4>
                                         <p class="text-yellow-700 text-xs mt-1">Waiting for organizer approval.</p>
+                                    </div>
+                                @elseif($userApplication && $userApplication->status === 'rejected')
+                                    <div class="w-full rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+                                        <div class="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2">
+                                            <i class="fas fa-times text-xl"></i>
+                                        </div>
+                                        <h4 class="text-red-900 font-semibold">Application Rejected</h4>
+                                        <p class="text-red-700 text-xs mt-1">The organizer declined your request.</p>
+                                        @if($event->is_full)
+                                            <p class="text-red-700 text-xs mt-3">Event is full right now.</p>
+                                        @elseif($event->is_past)
+                                            <p class="text-red-700 text-xs mt-3">Event already ended.</p>
+                                        @elseif($event->effective_status !== 'published')
+                                            <p class="text-red-700 text-xs mt-3">Event {{ ucfirst($event->effective_status) }}.</p>
+                                        @else
+                                            <form action="{{ route('events.apply', $event) }}" method="POST" class="mt-3">
+                                                @csrf
+                                                <button class="w-full rounded-xl bg-red-600 p-3 text-white font-semibold shadow hover:bg-red-700 transition">
+                                                    Apply Again
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @elseif($userApplication && $userApplication->status === 'approved')
+                                    <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                                        <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
+                                            <i class="fas fa-check text-xl"></i>
+                                        </div>
+                                        <h4 class="text-green-900 font-semibold">Application Accepted</h4>
+                                        <p class="text-green-700 text-xs mt-1">You have been accepted to this event.</p>
                                     </div>
                                 @elseif($event->is_full)
                                     <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
