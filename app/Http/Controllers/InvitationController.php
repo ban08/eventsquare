@@ -58,12 +58,11 @@ class InvitationController extends Controller
             return back()->withErrors(['invitee_email' => 'User is already a participant.']);
         }
 
-        // Duplicate invitation (pending or accepted)
-        $exists = Invitation::where('id_event', $event->id_event)
+        // Duplicate invitation check (pending or accepted). Allow re-sending if previously declined.
+        $existingInvitation = Invitation::where('id_event', $event->id_event)
             ->where('id_invitee', $inviteeUser->id_user)
-            ->whereIn('status', ['pending', 'accepted'])
-            ->exists();
-        if ($exists) {
+            ->first();
+        if ($existingInvitation && in_array($existingInvitation->status, ['pending', 'accepted'])) {
             return back()->withErrors(['invitee_email' => 'User already has an active invitation.']);
         }
 
@@ -88,32 +87,41 @@ class InvitationController extends Controller
             return back()->with('success', 'User had a pending application and has been added to the event!');
         }
 
-        // Create invitation with sequence safety (fix sequence misalignment if needed)
+        // Create or re-open invitation with sequence safety
         $invitation = null;
-        try {
-            $invitation = Invitation::create([
-                'id_event'   => $event->id_event,
-                'id_invitee' => $inviteeUser->id_user,
-                'status'     => 'pending',
-                'sent_at'    => now(),
+        if ($existingInvitation && $existingInvitation->status === 'declined') {
+            $existingInvitation->update([
+                'status'       => 'pending',
+                'sent_at'      => now(),
+                'responded_at' => null,
             ]);
-        } catch (UniqueConstraintViolationException $e) {
-            // Sequence likely behind due to manual seed inserts specifying id_invitation.
-            $max = DB::table('invitation')->max('id_invitation');
-            if ($max === null) { $max = 0; }
-            // Reset sequence to max+1 (PostgreSQL specific)
+            $invitation = $existingInvitation;
+        } else {
             try {
-                DB::statement("SELECT setval(pg_get_serial_sequence('invitation','id_invitation'), " . ($max + 1) . ")");
-            } catch (\Throwable $seqE) {
-                // ignore if fails
+                $invitation = Invitation::create([
+                    'id_event'   => $event->id_event,
+                    'id_invitee' => $inviteeUser->id_user,
+                    'status'     => 'pending',
+                    'sent_at'    => now(),
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                // Sequence likely behind due to manual seed inserts specifying id_invitation.
+                $max = DB::table('invitation')->max('id_invitation');
+                if ($max === null) { $max = 0; }
+                // Reset sequence to max+1
+                try {
+                    DB::statement("SELECT setval(pg_get_serial_sequence('invitation','id_invitation'), " . ($max + 1) . ")");
+                } catch (\Throwable $seqE) {
+                    // ignore if fails
+                }
+                // Retry once
+                $invitation = Invitation::create([
+                    'id_event'   => $event->id_event,
+                    'id_invitee' => $inviteeUser->id_user,
+                    'status'     => 'pending',
+                    'sent_at'    => now(),
+                ]);
             }
-            // Retry once
-            $invitation = Invitation::create([
-                'id_event'   => $event->id_event,
-                'id_invitee' => $inviteeUser->id_user,
-                'status'     => 'pending',
-                'sent_at'    => now(),
-            ]);
         }
 
         // Optional notification insert (ignore errors in prototype)
