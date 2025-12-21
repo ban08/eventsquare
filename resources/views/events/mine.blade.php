@@ -72,7 +72,7 @@
                 <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     @foreach($participatedEvents as $event)
                         <div>
-                            <x-event-card :event="$event" :show-time-status="false" />
+                            <x-event-card :event="$event" :show-time-status="false" :show-view-only="true" />
                         </div>
                     @endforeach
                 </div>

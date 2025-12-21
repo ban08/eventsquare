@@ -1,6 +1,6 @@
 {{-- Event card component for use in my-events page --}}
-{{-- BM: Props: $event (Event model), $showActions (boolean, default false), $showTimeStatus (boolean, default true) --}}
-@props(['event', 'showActions' => false, 'showTimeStatus' => true])
+{{-- Props: $event (Event model), $showActions (boolean, default false), $showTimeStatus (boolean, default true), $showViewOnly (boolean, default false) --}}
+@props(['event', 'showActions' => false, 'showTimeStatus' => true, 'showViewOnly' => false])
 
 @php
     // Format the start date for display
@@ -52,7 +52,7 @@
     </div>
 
     {{-- Action buttons (only shown when requested) --}}
-    @if($showActions)
+    @if($showActions || $showViewOnly)
         <div class="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center">
             <a href="{{ route('events.show', $event->id_event) }}"
                class="inline-flex items-center px-3 py-1 text-sm text-indigo-600 hover:text-indigo-800">
@@ -61,7 +61,8 @@
             </a>
 
             {{-- Edit and Delete buttons for organizers --}}
-            @auth
+            @if($showActions)
+                @auth
                 @if(Auth::id() === $event->id_organizer && $event->is_editable && $event->status !== 'canceled')
                     <div class="flex gap-2">
                         <a href="{{ route('events.edit', $event->id_event) }}"
@@ -86,7 +87,8 @@
                         @endif
                     </div>
                 @endif
-            @endauth
+                @endauth
+            @endif
         </div>
     @endif
 </div>
