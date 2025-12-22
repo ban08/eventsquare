@@ -725,42 +725,48 @@
         const pollsContainer = document.getElementById('polls-container');
         if (!pollsContainer) return;
 
-        pollsContainer.addEventListener('submit', function(e) {
-            if (e.target.matches('.poll-vote-form') || e.target.matches('.poll-remove-vote-form')) {
-                e.preventDefault();
-                const form = e.target;
-                const formData = new FormData(form);
-                const action = form.action;
+        pollsContainer.addEventListener('submit', async function(e) {
+            const form = e.target;
+            const isVote = form.matches('.poll-vote-form');
+            const isRemove = form.matches('.poll-remove-vote-form');
+            if (!isVote && !isRemove) return;
 
-                // Disable button to prevent double submit
-                const btn = form.querySelector('button[type="submit"]');
-                if(btn) btn.disabled = true;
+            e.preventDefault();
 
-                fetch(action, {
+            const formData = new FormData(form);
+            
+            if (isRemove) {
+                formData.append('_method', 'DELETE');
+            }
+
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch(form.action, {
                     method: 'POST',
                     body: formData,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json'
                     }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.html) {
-                        // Find the closest poll card and replace it
-                        const card = form.closest('[id^="poll-card-"]');
-                        if (card) {
-                            card.outerHTML = data.html;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    if(btn) btn.disabled = false;
-                    alert('An error occurred. Please try again.');
                 });
+
+                const data = await res.json();
+
+                if (!res.ok || !data || !data.html) {
+                    throw new Error('Bad response');
+                }
+
+                const card = form.closest('[id^="poll-card-"]');
+                if (card) card.outerHTML = data.html;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                if (btn) btn.disabled = false;
             }
         });
     });
+                
 </script>
 @endpush

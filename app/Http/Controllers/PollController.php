@@ -112,8 +112,9 @@ class PollController extends Controller
             ]);
         }
 
-        if ($request->wantsJson()) {
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest' || str_contains($request->header('Accept'), 'application/json')) {
             return response()->json([
+                'success' => true,
                 'html' => view('events.partials.poll-card', [
                     'poll' => $poll->refresh()->load([
                         'options' => fn($q) => $q->withCount('votes'),
@@ -121,7 +122,7 @@ class PollController extends Controller
                     ]),
                     'event' => $poll->event
                 ])->render()
-            ]);
+            ], 200);
         }
 
         return back()->with('success', 'Vote recorded.');
@@ -154,8 +155,9 @@ class PollController extends Controller
             ->where('id_participation', $participation->id_participation)
             ->delete();
 
-        if ($request->wantsJson()) {
+        if ($request->ajax() || $request->expectsJson()) {
             return response()->json([
+                'success' => true,
                 'html' => view('events.partials.poll-card', [
                     'poll' => $poll->refresh()->load([
                         'options' => fn($q) => $q->withCount('votes'),
@@ -163,7 +165,7 @@ class PollController extends Controller
                     ]),
                     'event' => $poll->event
                 ])->render()
-            ]);
+            ], 200);
         }
 
         return back()->with('success', 'Vote removed.');
