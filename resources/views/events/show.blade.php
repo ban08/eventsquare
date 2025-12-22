@@ -365,6 +365,20 @@
                                         </div>
                                         <h4 class="text-green-900 font-semibold">You're going!</h4>
                                         <p class="text-green-700 text-xs mt-1">See you there.</p>
+
+                                        @if(!$event->start_at->copy()->subHours(24)->isPast())
+                                            <form action="{{ route('events.leave', $event) }}" method="POST" class="mt-4">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="w-full rounded-xl bg-red-600 p-3 text-white font-semibold shadow hover:bg-red-700 transition">
+                                                Leave event
+                                                </button>
+                                            </form>
+                                        @else
+                                            <p class="text-xs text-slate-500 mt-4">
+                                                You can’t leave less than 24 hours before the event starts.
+                                            </p>
+                                        @endif    
                                     </div>
                                 @elseif($userApplication && $userApplication->status === 'pending')
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">

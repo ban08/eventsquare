@@ -637,7 +637,7 @@ class EventController extends Controller
         // Notify organizer
         \App\Models\Notification::create([
             'id_user' => $event->id_organizer,
-            'message' => 'user left',
+            'message' => 'event updated',
             'id_event' => $event->id_event,
             'created_at' => now(),
         ]);
