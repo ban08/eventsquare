@@ -232,9 +232,9 @@
             <div class="flex flex-col md:flex-row justify-between items-center gap-6">
                 {{-- Horizontal Links (Left) --}}
                 <nav class="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-2">
-                    <a href="#" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Help Center</a>
-                    <a href="#" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Terms of Service</a>
-                    <a href="#" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Privacy Policy</a>
+                    <a href="{{ route('faq') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">FAQ</a>
+                    <a href="{{ route('terms-of-service') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Terms of Service</a>
+                    <a href="{{ route('privacy-policy') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Privacy Policy</a>
                     <a href="{{ route('about') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">About Us</a>
                 </nav>
 

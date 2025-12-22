@@ -35,6 +35,9 @@ Route::redirect('/', '/events');
 
 // US06 - About Page (Static)
 Route::view('/about', 'about')->name('about');
+Route::view('/faq', 'faq')->name('faq');
+Route::view('/terms-of-service', 'terms-of-service')->name('terms-of-service');
+Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 
 
 
