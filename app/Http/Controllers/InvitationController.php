@@ -305,39 +305,50 @@ class InvitationController extends Controller
 
         try {
             DB::transaction(function () use ($invitation, $event) {
-                $invitation->update([
-                    'status'       => 'accepted',
-                    'responded_at' => now(),
-                ]);
+                $participation = DB::table('participation')
+                    ->where('id_event', $invitation->id_event)
+                    ->where('id_user', $invitation->id_invitee)
+                    ->first();
 
-                // Automatically create participation if not already present
-                try {
+                if ($participation) {
+                    if ($participation->left_at !== null) {
+                        DB::table('participation')
+                            ->where('id_participation', $participation->id_participation)
+                            ->update([
+                                'left_at' => null,
+                                'joined_at' => now(),
+                            ]);
+                    }
+                } else {
                     DB::table('participation')->insert([
                         'id_event' => $invitation->id_event,
                         'id_user'  => $invitation->id_invitee,
                         'joined_at'=> now(),
                     ]);
-
-                    // Clean up any pending application for this user (since they just joined via invite)
-                    \App\Models\Application::where('id_event', $invitation->id_event)
-                        ->where('id_user', $invitation->id_invitee)
-                        ->where('status', 'pending')
-                        ->update([
-                            'status' => 'approved', 
-                            'decided_at' => now()
-                        ]);
-
-                    // Notify organizer
-                    \App\Models\Notification::create([
-                        'id_user' => $event->id_organizer,
-                        'message' => 'user joined',
-                        'id_event' => $event->id_event,
-                        'id_invitation' => $invitation->id_invitation,
-                        'created_at' => now(),
-                    ]);
-                } catch (\Throwable $e) {
-                    // ignore if constraint/trigger rejects
                 }
+
+                $invitation->update([
+                    'status'       => 'accepted',
+                    'responded_at' => now(),
+                ]);
+
+                // Clean up any pending application for this user (since they just joined via invite)
+                \App\Models\Application::where('id_event', $invitation->id_event)
+                    ->where('id_user', $invitation->id_invitee)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'approved',
+                        'decided_at' => now(),
+                    ]);
+
+                // Notify organizer
+                \App\Models\Notification::create([
+                    'id_user' => $event->id_organizer,
+                    'message' => 'user joined',
+                    'id_event' => $event->id_event,
+                    'id_invitation' => $invitation->id_invitation,
+                    'created_at' => now(),
+                ]);
             });
         } catch (\Throwable $e) {
             if (request()->wantsJson()) {
