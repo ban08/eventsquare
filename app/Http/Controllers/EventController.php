@@ -14,6 +14,8 @@ use App\Models\Tag;
 use App\Models\Invitation;
 use App\Models\Notification;
 use Carbon\Carbon;
+use App\Models\PollVote;
+
 
 class EventController extends Controller
 {
@@ -629,6 +631,9 @@ class EventController extends Controller
         if ($event->start_at->copy()->subHours(24)->isPast()) {
              return back()->with('error', 'You cannot leave the event less than 24 hours before it starts.');
         }
+
+        //Erase user poll votes when he leaves the event
+        PollVote::where('id_participation', $participation->id_participation)->delete();
 
         // Update left_at
         $participation->left_at = now();
