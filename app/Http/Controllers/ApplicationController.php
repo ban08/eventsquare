@@ -51,9 +51,9 @@ class ApplicationController extends Controller
             // Notify user
             Notification::create([
                 'id_user' => $application->id_user,
-                'message' => 'application accepted',
+                'message' => 'event updated',
                 'id_event' => $event->id_event,
-                'id_application' => $application->id_application,
+                //'id_application' => $application->id_application,
                 'created_at' => now(),
             ]);
         });
@@ -84,9 +84,9 @@ class ApplicationController extends Controller
             // Notify user
             Notification::create([
                 'id_user' => $application->id_user,
-                'message' => 'application rejected',
+                'message' => 'event updated',
                 'id_event' => $event->id_event,
-                'id_application' => $application->id_application,
+                //'id_application' => $application->id_application,
                 'created_at' => now(),
             ]);
         });
