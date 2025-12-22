@@ -775,11 +775,6 @@
                     return;
                 }
 
-                //const data = await res.json();
-                //if (!res.ok || !data || !data.html) {
-                    //throw new Error('Invalid server response');
-                //}
-
                 const card = form.closest('[id^="poll-card-"]');
                 if (card) card.outerHTML = data.html;
 
