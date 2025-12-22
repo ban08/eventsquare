@@ -83,7 +83,7 @@ class PollController extends Controller
         }
 
         $validated = $request->validate([
-            'option_id' => ['required', 'exists:poll_option,id_option'],
+            'option_id' => ['required', 'integer'],
         ]);
         
         // Verify option belongs to poll
@@ -155,7 +155,7 @@ class PollController extends Controller
             ->where('id_participation', $participation->id_participation)
             ->delete();
 
-        if ($request->ajax() || $request->expectsJson()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'html' => view('events.partials.poll-card', [

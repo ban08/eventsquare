@@ -720,7 +720,7 @@
 @endsection
 
 @push('scripts')
-<script>
+    <script>
     document.addEventListener('DOMContentLoaded', function() {
         const pollsContainer = document.getElementById('polls-container');
         if (!pollsContainer) return;
@@ -734,9 +734,9 @@
             e.preventDefault();
 
             const formData = new FormData(form);
-            
+
             if (isRemove) {
-                formData.append('_method', 'DELETE');
+            formData.append('_method', 'DELETE');
             }
 
             const btn = form.querySelector('button[type="submit"]');
@@ -747,26 +747,49 @@
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                     }
                 });
 
-                const data = await res.json();
+                const contentType = res.headers.get('content-type') || '';
+                const bodyText = await res.text();
 
-                if (!res.ok || !data || !data.html) {
-                    throw new Error('Bad response');
+                if (!contentType.includes('application/json')) {
+                    console.error('Response non-JSON:', bodyText);
+                    window.location.reload();
+                    return;
                 }
+
+                const data = JSON.parse(bodyText);
+
+                if (!res.ok) {
+                    console.error('HTTP error:', res.status, data);
+                    window.location.reload();
+                    return;
+                }
+
+                if (!data.html) {
+                    console.error('Missing html:', data);
+                    window.location.reload();
+                    return;
+                }
+
+                //const data = await res.json();
+                //if (!res.ok || !data || !data.html) {
+                    //throw new Error('Invalid server response');
+                //}
 
                 const card = form.closest('[id^="poll-card-"]');
                 if (card) card.outerHTML = data.html;
+
             } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+                console.error('Vote error:', error);
+                window.location.reload();
+            } finally {
                 if (btn) btn.disabled = false;
-            }
+                }
+            });
         });
-    });
-                
-</script>
+    </script>
 @endpush
