@@ -3,17 +3,17 @@
     $myVote = $userParticipation ? $poll->votes->where('id_participation', $userParticipation->id_participation)->first() : null;
     $totalVotes = $poll->options->sum('votes_count');
     $isOrganizer = Auth::id() === $event->id_organizer;
+    $isAdmin = Gate::allows('admin');
     $hasVoted = $myVote !== null;
     $canVote = $userParticipation && !$hasVoted;
     
     // Logic:
     // If I have voted -> Show Results (with Change Vote button)
-    // If I am Organizer AND NOT voted -> Show Results (with Vote button)
-    // If I am Organizer AND voted -> Show Results (with Change Vote button)
+    // If I am Organizer OR Admin -> Show Results
     // If I am Participant AND NOT voted -> Show Form
     // If I am NOT Participant -> Show Read-only Options
     
-    $showResults = $hasVoted || $isOrganizer;
+    $showResults = $hasVoted || $isOrganizer || $isAdmin;
     $showForm = $canVote && !$hasVoted; // Default state for participant
     
     // If organizer and not voted, we show results by default, but need a way to show form.

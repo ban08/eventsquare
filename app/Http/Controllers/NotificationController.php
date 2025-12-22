@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\Invitation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
@@ -21,10 +22,10 @@ class NotificationController extends Controller
 
         $userId = Auth::id();
 
-        // Get unread notifications first, then read ones
+        // Get unread notifications only
         $notifications = Notification::with(['event', 'invitation'])
             ->where('id_user', $userId)
-            ->orderByRaw('read_at IS NOT NULL') // Unread first
+            ->whereNull('read_at')
             ->orderByDesc('created_at')
             ->limit(50)
             ->get();
@@ -41,9 +42,37 @@ class NotificationController extends Controller
             ->get();
 
         // Get responded invitations history
+        // Filter: Only future events.
+        // Show 'accepted' only if currently participating.
+        // Show 'declined' only if NOT participating.
         $respondedInvitations = Invitation::with(['event'])
             ->where('id_invitee', $userId)
             ->where('status', '!=', 'pending')
+            ->whereHas('event', function ($query) {
+                $query->where('start_at', '>', now());
+            })
+            ->where(function ($query) use ($userId) {
+                $query->where(function ($q) use ($userId) {
+                    $q->where('status', 'accepted')
+                      ->whereExists(function ($sq) use ($userId) {
+                          $sq->select(DB::raw(1))
+                             ->from('participation')
+                             ->whereColumn('participation.id_event', 'invitation.id_event')
+                             ->where('participation.id_user', $userId)
+                             ->whereNull('left_at');
+                      });
+                })
+                ->orWhere(function ($q) use ($userId) {
+                    $q->where('status', 'declined')
+                      ->whereNotExists(function ($sq) use ($userId) {
+                          $sq->select(DB::raw(1))
+                             ->from('participation')
+                             ->whereColumn('participation.id_event', 'invitation.id_event')
+                             ->where('participation.id_user', $userId)
+                             ->whereNull('left_at');
+                      });
+                });
+            })
             ->orderByDesc('responded_at')
             ->limit(20)
             ->get();

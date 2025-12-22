@@ -34,7 +34,7 @@
                     <div class="relative group">
                         <div class="w-32 h-32 rounded-2xl border-4 border-white bg-white shadow-lg overflow-hidden relative z-10">
                             @if($user->profile && $user->profile->photo_url)
-                                <img src="{{ Storage::url($user->profile->photo_url) }}" alt="{{ $user->name }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                                <img src="{{ Str::startsWith($user->profile->photo_url, 'http') ? $user->profile->photo_url : (Str::startsWith($user->profile->photo_url, 'storage/') ? asset($user->profile->photo_url) : asset('storage/' . $user->profile->photo_url)) }}" alt="{{ $user->name }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                             @else
                                 <div class="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
                                     <i class="fas fa-user text-4xl"></i>

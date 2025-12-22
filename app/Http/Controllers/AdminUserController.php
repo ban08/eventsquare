@@ -80,10 +80,10 @@ class AdminUserController extends Controller
             if ($request->hasFile('photo')) {
                 $file = $request->file('photo');
                 $path = $file->store('profile_photos', 'public');
-                $photoUrl = 'storage/' . $path;
+                $photoUrl = $path;
             }
 
-            // Create profile row per ER (R03)
+            // Create profile row per
             DB::table('profile')->insert([
                 'id_user' => $user->id_user,
                 'photo_url' => $photoUrl,
@@ -148,12 +148,12 @@ class AdminUserController extends Controller
                 $path = $file->store('profile_photos', 'public');
                 
                 if ($user->profile) {
-                    $user->profile->photo_url = 'storage/' . $path;
+                    $user->profile->photo_url = $path;
                     $user->profile->save();
                 } else {
                     // Create profile if it doesn't exist
                     $user->profile()->create([
-                        'photo_url' => 'storage/' . $path
+                        'photo_url' => $path
                     ]);
                 }
             }

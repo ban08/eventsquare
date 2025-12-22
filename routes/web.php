@@ -94,6 +94,9 @@ Route::controller(EventController::class)->group(function () {
     // Leave event (AT01)
     Route::post('/events/{event}/leave', 'leave')->name('events.leave')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
+    // Remove participant (Organizer only)
+    Route::delete('/events/{event}/participants/{user}', 'removeParticipant')->name('events.participants.remove')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
+
     // Report event (RU11)
     Route::post('/events/{event}/report', [\App\Http\Controllers\ReportController::class, 'store'])->name('events.report')->middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class]);
 
@@ -104,6 +107,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsActive::class])->con
     Route::post('/events/{event}/invite', 'invite')->name('invitations.invite'); // OR03
     Route::post('/invitations/{invitation}/accept', 'accept')->name('invitations.accept'); // RU10
     Route::post('/invitations/{invitation}/decline', 'decline')->name('invitations.decline'); // RU10
+    Route::delete('/invitations/{invitation}', 'destroy')->name('invitations.destroy'); // Cancel invitation
 });
 
 // Applications (OR04 approve/reject)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\User;
 use App\Models\Admin;
 use App\Models\AdminAction;
 use App\Models\AdminEventAction;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tag;
 use App\Models\Notification;
+use App\Models\Invitation;
 use Carbon\Carbon;
 
 class EventController extends Controller
@@ -53,7 +55,12 @@ class EventController extends Controller
 
         // US03: Filter by tags if provided (events must have ALL selected tags)
         if (!empty($tagFilters)) {
-            foreach ($tagFilters as $tagName) {
+            // Validate tags against the database to prevent ENUM errors
+            // We fetch all tags first to avoid querying with invalid ENUM values which causes SQL errors
+            $allTagNames = Tag::pluck('name')->toArray();
+            $validTags = array_intersect($tagFilters, $allTagNames);
+
+            foreach ($validTags as $tagName) {
                 $query->whereHas('tags', function ($q) use ($tagName) {
                     $q->where('name', $tagName);
                 });
@@ -70,10 +77,10 @@ class EventController extends Controller
             $tsquery = $this->buildTsQuery($search);
             
             if ($tsquery) {
-                $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery]);
+                $query->whereRaw('search_fts @@ to_tsquery(\'english\', ?)', [$tsquery]);
 
                 if ($sort === 'relevance') {
-                    $query->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery]);
+                    $query->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'english\', ?)) DESC', [$tsquery]);
                 }
             }
         }
@@ -117,7 +124,12 @@ class EventController extends Controller
 
         // US03: Filter by tags if provided (events must have ALL selected tags)
         if (!empty($tagFilters)) {
-            foreach ($tagFilters as $tagName) {
+            // Validate tags against the database to prevent ENUM errors
+            // We fetch all tags first to avoid querying with invalid ENUM values which causes SQL errors
+            $allTagNames = Tag::pluck('name')->toArray();
+            $validTags = array_intersect($tagFilters, $allTagNames);
+
+            foreach ($validTags as $tagName) {
                 $query->whereHas('tags', function ($q) use ($tagName) {
                     $q->where('name', $tagName);
                 });
@@ -128,8 +140,8 @@ class EventController extends Controller
         if ($search !== '') {
             $tsquery = $this->buildTsQuery($search);
             
-            $query->whereRaw('search_fts @@ to_tsquery(\'simple\', ?)', [$tsquery])
-                  ->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'simple\', ?)) DESC', [$tsquery])
+            $query->whereRaw('search_fts @@ to_tsquery(\'english\', ?)', [$tsquery])
+                  ->orderByRaw('ts_rank_cd(search_fts, to_tsquery(\'english\', ?)) DESC', [$tsquery])
                   ->orderBy('start_at', 'asc');
         } else {
             $query->orderBy('start_at', 'asc');
@@ -384,6 +396,15 @@ class EventController extends Controller
                 ->withInput();
         }
 
+        // Check if capacity is lower than current attendees
+        if ($validated['capacity'] < $event->current_participants_count) {
+            return back()
+                ->withErrors([
+                    'capacity' => 'Capacity cannot be lower than the current number of attendees (' . $event->current_participants_count . ').',
+                ])
+                ->withInput();
+        }
+
         // 3. Update event fields
         $event->update([
             // 'title'       => $validated['title'], --- don't edit
@@ -480,12 +501,21 @@ class EventController extends Controller
             abort(403, 'You are not allowed to delete this event.');
         }
 
-        // For organizers: check if the event can be hard deleted (no activity)
+        // For organizers: check if the event can be hard deleted (no attendees)
         // Admins can delete any event regardless of activity (AD03)
         if (!$isAdmin && !$event->can_hard_delete) {
+            // If the event has attendees, we should cancel it instead of deleting it
+            // But first, check if it's already canceled
+            if ($event->status === 'canceled') {
+                 return redirect()
+                    ->route('events.mine')
+                    ->with('error', 'This event is already canceled and cannot be deleted because it has history.');
+            }
+            
+            // If not canceled, suggest canceling
             return redirect()
                 ->route('events.mine')
-                ->with('error', 'This event already has activity. Please cancel it instead of deleting.');
+                ->with('error', 'This event has attendees. Please cancel it instead of deleting.');
         }
 
         // Store event info for logging before deletion
@@ -564,6 +594,11 @@ class EventController extends Controller
         // Cannot apply if event full
         if ($event->is_full) {
             return back()->with('error', 'This event is already full.');
+        }
+
+        // Cannot apply if organizer
+        if ($event->id_organizer === $user->id_user) {
+            return back()->with('error', 'You cannot join your own event.');
         }
 
         // Check for existing application
@@ -675,6 +710,15 @@ class EventController extends Controller
         $participation->left_at = now();
         $participation->save();
 
+        // Remove poll votes associated with this participation
+        // We use the DB facade to directly delete from the poll_vote table using the participation ID
+        DB::table('poll_vote')->where('id_participation', $participation->id_participation)->delete();
+
+        // Clear all notifications related to this event for the user
+        Notification::where('id_user', Auth::id())
+            ->where('id_event', $event->id_event)
+            ->delete();
+
         // Notify organizer
         \App\Models\Notification::create([
             'id_user' => $event->id_organizer,
@@ -694,6 +738,45 @@ class EventController extends Controller
         }
 
         return back()->with('success', 'You have left the event.');
+    }
+
+    // Remove a participant from the event (Organizer only)
+    public function removeParticipant(Request $request, Event $event, User $user)
+    {
+        if (!Auth::check() || Auth::id() !== $event->id_organizer) {
+            abort(403, 'Only the organizer can remove participants.');
+        }
+
+        if ($user->id_user === $event->id_organizer) {
+            return back()->with('error', 'You cannot remove yourself from the event.');
+        }
+
+        $participation = $event->participations()
+            ->where('id_user', $user->id_user)
+            ->whereNull('left_at')
+            ->first();
+
+        if (!$participation) {
+            return back()->with('error', 'User is not a participant.');
+        }
+
+        // Mark as left
+        $participation->update(['left_at' => now()]);
+
+        // Remove votes
+        DB::table('poll_vote')->where('id_participation', $participation->id_participation)->delete();
+
+        // Update application status if exists
+        $application = $event->applications()
+            ->where('id_user', $user->id_user)
+            ->first();
+            
+        if ($application) {
+            $application->status = 'rejected'; // Or canceled, but rejected implies forced removal
+            $application->save();
+        }
+
+        return back()->with('success', 'Participant removed successfully.');
     }
 
     /**

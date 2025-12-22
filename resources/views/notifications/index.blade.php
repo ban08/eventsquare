@@ -328,12 +328,12 @@
                     });
 
                     if (response.ok) {
-                        // Remove all unread indicators visually
-                        document.querySelectorAll('.notification-item').forEach(item => {
-                            item.classList.remove('bg-indigo-50/30');
-                            const dot = item.querySelector('.ajax-action-btn'); // The read dot
-                            if (dot) dot.remove();
-                        });
+                        // Remove all notification items
+                        const notifList = document.getElementById('notification-list');
+                        if (notifList) {
+                            notifList.innerHTML = ''; // Clear list
+                            checkEmptyStates(); // Show empty state
+                        }
                         markAllBtn.remove(); // Remove the button itself
                     }
                 } catch (error) {

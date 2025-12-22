@@ -79,7 +79,10 @@ class Event extends Model
             'participation',   
             'id_event',        
             'id_user'          
-        )->withPivot('joined_at', 'left_at'); 
+        )
+        ->withPivot('joined_at', 'left_at')
+        ->wherePivot('left_at', null)
+        ->where('user.status', '!=', 'deleted'); 
     }
 
     // This event HAS MANY applications (people who applied to join).
@@ -94,15 +97,24 @@ class Event extends Model
         return $this->hasMany(Invitation::class, 'id_event');
     }
 
+    // This event HAS MANY reports.
+    public function reports(): HasMany
+    {
+        return $this->hasMany(EventReport::class, 'id_event');
+    }
+
     // Get the number of current participants.
     // This makes a "virtual" attribute:
     //   $event->current_participants_count
     // It counts how many participations do NOT have "left_at" filled
-    // (meaning the user has not left the event).
+    // (meaning the user has not left the event) AND the user is not deleted.
     public function getCurrentParticipantsCountAttribute(): int
     {
         return $this->participations()
             ->whereNull('left_at') // only people who haven't left
+            ->whereHas('user', function ($query) {
+                $query->where('status', '!=', 'deleted');
+            })
             ->count();
     }
 
@@ -228,22 +240,17 @@ class Event extends Model
     }
 
     // Check if the event can be hard deleted.
-    // Events can only be hard deleted if they have no activity:
-    // - No applications
-    // - No participations
-    // - No invitations
+    // Events can only be hard deleted if they have no CURRENT activity:
+    // - No active participations (users who haven't left)
+    // Past participations are allowed (will be deleted via cascade)
     public function getCanHardDeleteAttribute(): bool
     {
-        // Check if there are any applications
-        $hasApplications = $this->applications()->exists();
+        // Check if there are any active participations
+        $hasActiveParticipations = $this->participations()
+            ->whereNull('left_at')
+            ->exists();
 
-        // Check if there are any participations
-        $hasParticipations = $this->participations()->exists();
-
-        // Check if there are any invitations
-        $hasInvitations = $this->invitations()->exists();
-
-        // Event can be hard deleted only if there's no activity
-        return !$hasApplications && !$hasParticipations && !$hasInvitations;
+        // Event can be hard deleted only if there are no current attendees
+        return !$hasActiveParticipations;
     }
 }

@@ -218,6 +218,9 @@ class AuthController extends Controller
 
         // 3. Regenerate the CSRF token for security.
         $request->session()->regenerateToken();
+        
+        // Explicitly save the session to prevent race conditions with the redirect
+        $request->session()->save();
 
         // 4. Redirect the logged out user back to the login page.
         return redirect()->route('login')

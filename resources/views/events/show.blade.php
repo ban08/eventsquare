@@ -117,15 +117,17 @@
                         @if($event->participants->count() > 0)
                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                 @foreach($event->participants->take(8) as $participant)
-                                    <a href="{{ route('profile.show', $participant->id_user) }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition group">
-                                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 group-hover:bg-indigo-200 transition">
-                                            {{ substr($participant->name, 0, 1) }}
-                                        </div>
-                                        <div class="min-w-0">
-                                            <p class="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-700 transition">{{ $participant->name }}</p>
-                                            <p class="text-xs text-slate-500 truncate">{{ $participant->id_user === $event->id_organizer ? 'Organizer' : 'Member' }}</p>
-                                        </div>
-                                    </a>
+                                    <div class="relative group">
+                                        <a href="{{ route('profile.show', $participant->id_user) }}" class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition">
+                                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 group-hover:bg-indigo-200 transition">
+                                                {{ substr($participant->name, 0, 1) }}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-700 transition">{{ $participant->name }}</p>
+                                                <p class="text-xs text-slate-500 truncate">{{ $participant->id_user === $event->id_organizer ? 'Organizer' : 'Member' }}</p>
+                                            </div>
+                                        </a>
+                                    </div>
                                 @endforeach
                             </div>
                             @if($event->participants->count() > 0)
@@ -156,7 +158,7 @@
                 </div>
 
                 {{-- Polls Card (OR06 + AT06) --}}
-                @if(Auth::check() && ($isParticipant || Auth::id() === $event->id_organizer))
+                @if(Auth::check() && ($isParticipant || Auth::id() === $event->id_organizer || Gate::allows('admin')))
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
                         <div class="flex items-center justify-between mb-6">
                             <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -257,7 +259,7 @@
                             @endif
 
                             <div class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                                @forelse($event->invitations as $inv)
+                                @forelse($event->invitations->where('status', 'pending') as $inv)
                                     <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
                                         <div class="flex items-center gap-3">
                                             <div class="h-8 w-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-xs">
@@ -274,16 +276,21 @@
                                                 <p class="text-xs text-slate-500">Invited {{ $inv->sent_at ? $inv->sent_at->diffForHumans() : 'recently' }}</p>
                                             </div>
                                         </div>
-                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
-                                            @if($inv->status === 'pending') bg-yellow-100 text-yellow-800
-                                            @elseif($inv->status === 'accepted') bg-green-100 text-green-800
-                                            @elseif($inv->status === 'declined') bg-red-100 text-red-800
-                                            @else bg-gray-100 text-gray-800 @endif">
-                                            {{ ucfirst($inv->status) }}
-                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {{ ucfirst($inv->status) }}
+                                            </span>
+                                            <form action="{{ route('invitations.destroy', $inv->id_invitation) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this invitation?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-slate-400 hover:text-red-600 transition-colors" title="Cancel Invitation">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
                                 @empty
-                                    <p class="text-sm text-slate-500 text-center py-4">No invitations sent yet.</p>
+                                    <p class="text-sm text-slate-500 text-center py-4">No pending invitations.</p>
                                 @endforelse
                             </div>
                         </div>
@@ -338,11 +345,13 @@
 
                     @auth
                         @if(Auth::id() !== $event->id_organizer)
-                            <div class="mt-6 pt-6 border-t border-slate-100">
-                                <button onclick="openReportModal()" class="flex items-center gap-2 text-sm text-slate-500 hover:text-red-600 transition">
-                                    <i class="fas fa-flag"></i> Report Event
-                                </button>
-                            </div>
+                            @cannot('admin')
+                                <div class="mt-6 pt-6 border-t border-slate-100">
+                                    <button onclick="openReportModal()" class="flex items-center gap-2 text-sm text-slate-500 hover:text-red-600 transition">
+                                        <i class="fas fa-flag"></i> Report Event
+                                    </button>
+                                </div>
+                            @endcannot
                         @endif
                     @endauth
 
@@ -350,12 +359,15 @@
                     @auth
                         @php
                             $alreadyParticipant = $isParticipant;
-                            $alreadyApplied = $event->applications->contains(fn($a) => $a->id_user == Auth::id() && $a->status !== 'canceled');
+                            // Get the most recent application for this user
+                            $myApplication = $event->applications->where('id_user', Auth::id())->sortByDesc('created_at')->first();
+                            $applicationStatus = $myApplication ? $myApplication->status : null;
+                            
                             $isOrganizer = $event->id_organizer == Auth::id();
                             $isAdmin = Gate::allows('admin');
                         @endphp
 
-                        @if(!$isAdmin)
+                        @if(!$isAdmin && !$isOrganizer)
                             <div class="mt-8 pt-6 border-t border-slate-100">
                                 @if($alreadyParticipant)
                                     @if($event->effective_status === 'canceled')
@@ -385,13 +397,21 @@
                                             </form>
                                         @endif
                                     @endif
-                                @elseif($alreadyApplied)
+                                @elseif($applicationStatus === 'pending')
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">
                                         <div class="mx-auto h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-2">
                                             <i class="fas fa-clock text-xl"></i>
                                         </div>
                                         <h4 class="text-yellow-900 font-semibold">Application Pending</h4>
                                         <p class="text-yellow-700 text-xs mt-1">Waiting for organizer approval.</p>
+                                    </div>
+                                @elseif($applicationStatus === 'rejected')
+                                    <div class="w-full rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+                                        <div class="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2">
+                                            <i class="fas fa-times text-xl"></i>
+                                        </div>
+                                        <h4 class="text-red-900 font-semibold">Application Rejected</h4>
+                                        <p class="text-red-700 text-xs mt-1">The organizer has rejected your request or removed you from the event.</p>
                                     </div>
                                 @elseif($event->is_full)
                                     <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
@@ -538,22 +558,35 @@
                             <div class="mt-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                                 <div class="space-y-3">
                                     @foreach($event->participants as $participant)
-                                        <a href="{{ route('profile.show', $participant->id_user) }}" class="block w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition border border-transparent hover:border-slate-100 cursor-pointer group">
-                                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 group-hover:bg-indigo-200 transition">
-                                                {{ substr($participant->name, 0, 1) }}
+                                        <div class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group">
+                                            <a href="{{ route('profile.show', $participant->id_user) }}" class="flex items-center gap-3 flex-1 min-w-0">
+                                                <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0 group-hover:bg-indigo-200 transition">
+                                                    {{ substr($participant->name, 0, 1) }}
+                                                </div>
+                                                <div class="min-w-0 flex-1 text-left">
+                                                    <span class="text-sm font-medium text-slate-900 group-hover:text-indigo-600 truncate block">
+                                                        {{ $participant->name }}
+                                                    </span>
+                                                    <p class="text-xs text-slate-500 truncate">{{ $participant->id_user === $event->id_organizer ? 'Organizer' : 'Member' }}</p>
+                                                </div>
+                                            </a>
+                                            <div class="flex items-center gap-2">
+                                                @if(Auth::id() === $participant->id_user)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                        You
+                                                    </span>
+                                                @endif
+                                                @if(Auth::id() === $event->id_organizer && $participant->id_user !== Auth::id())
+                                                    <form action="{{ route('events.participants.remove', ['event' => $event->id_event, 'user' => $participant->id_user]) }}" method="POST" onsubmit="return confirm('Remove this participant?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-slate-400 hover:text-red-600 p-1 transition-colors" title="Remove Participant">
+                                                            <i class="fas fa-user-times"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
-                                            <div class="min-w-0 flex-1 text-left">
-                                                <span class="text-sm font-medium text-slate-900 group-hover:text-indigo-600 truncate block">
-                                                    {{ $participant->name }}
-                                                </span>
-                                                <p class="text-xs text-slate-500 truncate">{{ $participant->id_user === $event->id_organizer ? 'Organizer' : 'Member' }}</p>
-                                            </div>
-                                            @if(Auth::id() === $participant->id_user)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                                                    You
-                                                </span>
-                                            @endif
-                                        </a>
+                                        </div>
                                     @endforeach
                                 </div>
                             </div>
@@ -613,6 +646,7 @@
     </div>
 
     {{-- Report Modal --}}
+    @cannot('admin')
     <div id="report-modal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeReportModal()"></div>
@@ -627,6 +661,22 @@
                         </h3>
                         
                         <div class="space-y-4">
+                            @if($event->reports->contains('id_user', Auth::id()))
+                                <div class="rounded-md bg-yellow-50 p-4 border border-yellow-200">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h3 class="text-sm font-medium text-yellow-800">Existing Report</h3>
+                                            <div class="mt-2 text-sm text-yellow-700">
+                                                <p>You have already reported this event. Submitting a new report will overwrite your previous one.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
                             <p class="text-sm text-slate-600">Please describe why you are reporting this event. This will be reviewed by an administrator.</p>
                             <div>
                                 <label for="report-reason" class="block text-sm font-medium text-slate-700">Reason</label>
@@ -646,6 +696,7 @@
             </div>
         </div>
     </div>
+    @endcannot
 
     <script>
         // Modal Logic

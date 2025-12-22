@@ -6,6 +6,7 @@ use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -24,6 +25,21 @@ class ProfileController extends Controller
             return redirect()->route('login');
         }
 
+        // If current user is admin, redirect to admin user view
+        if (Gate::allows('admin')) {
+            return redirect()->route('admin.users.show', $user);
+        }
+
+        // Prevent interaction with deleted users
+        if ($user->status === 'deleted') {
+            abort(404);
+        }
+
+        // Prevent viewing admin profiles
+        if (\App\Models\Admin::where('email', $user->email)->exists()) {
+            abort(404);
+        }
+
         // Ensure profile exists (lazy creation if missing)
         if (!$user->profile) {
             Profile::create(['id_user' => $user->id_user]);
@@ -39,6 +55,12 @@ class ProfileController extends Controller
     public function edit(): View
     {
         $user = Auth::user();
+        
+        // Ensure user is authenticated
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
         if (!$user->profile) {
             Profile::create(['id_user' => $user->id_user]);
             $user->refresh();
@@ -110,6 +132,29 @@ class ProfileController extends Controller
         $user->participations()->delete();
         $user->applications()->delete();
         $user->invitations()->delete();
+
+        // Cancel all active events organized by this user
+        $organizedEvents = \App\Models\Event::where('id_organizer', $user->id_user)
+            ->where('status', 'published')
+            ->where('start_at', '>', now())
+            ->get();
+
+        foreach ($organizedEvents as $event) {
+            $event->update(['status' => 'canceled']);
+            
+            // Notify participants
+            $participants = $event->participants()->wherePivot('left_at', null)->get();
+            foreach ($participants as $participant) {
+                if ($participant->id_user !== $user->id_user) {
+                    \App\Models\Notification::create([
+                        'id_user' => $participant->id_user,
+                        'message' => 'event canceled',
+                        'id_event' => $event->id_event,
+                        'created_at' => now(),
+                    ]);
+                }
+            }
+        }
 
         // Anonymize and Soft Delete
         $user->name = 'Deleted User';

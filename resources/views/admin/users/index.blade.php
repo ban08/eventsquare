@@ -50,7 +50,7 @@
                                 <div class="flex items-center">
                                     <div class="h-10 w-10 flex-shrink-0">
                                         @if($user->profile && $user->profile->photo_url)
-                                            <img class="h-10 w-10 rounded-full object-cover border border-slate-200" src="{{ asset($user->profile->photo_url) }}" alt="">
+                                            <img class="h-10 w-10 rounded-full object-cover border border-slate-200" src="{{ Str::startsWith($user->profile->photo_url, 'http') ? $user->profile->photo_url : (Str::startsWith($user->profile->photo_url, 'storage/') ? asset($user->profile->photo_url) : asset('storage/' . $user->profile->photo_url)) }}" alt="">
                                         @else
                                             <div class="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                                                 <i class="fas fa-user"></i>
