@@ -6,6 +6,9 @@ use App\Models\User;
 use App\Models\Admin;
 use App\Models\AdminAction;
 use App\Models\AdminUserAction;
+use App\Models\Event;
+use App\Models\Invitation;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +17,12 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminUserController extends Controller
 {
+    /**
+     * Display a listing of users (AD07).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $q = $request->input('q');
@@ -38,6 +47,12 @@ class AdminUserController extends Controller
         ]);
     }
 
+    /**
+     * Display the specified user.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\View\View
+     */
     public function show(User $user)
     {
         // Eager load profile for photo_url
@@ -45,11 +60,22 @@ class AdminUserController extends Controller
         return view('admin.users.show', compact('user'));
     }
 
+    /**
+     * Show the form for creating a new user.
+     *
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         return view('admin.users.create');
     }
 
+    /**
+     * Store a newly created user in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -109,6 +135,12 @@ class AdminUserController extends Controller
             ->with('success', 'User criado com sucesso.');
     }
 
+    /**
+     * Show the form for editing the specified user.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\View\View
+     */
     public function edit(User $user)
     {
         // Eager load profile for photo_url
@@ -116,6 +148,13 @@ class AdminUserController extends Controller
         return view('admin.users.edit', compact('user'));
     }
 
+    /**
+     * Update the specified user in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
@@ -179,8 +218,11 @@ class AdminUserController extends Controller
     }
 
     /**
-     * AD06: Delete a user account permanently.
-     * This is a hard delete - the user and all related data will be removed.
+     * Remove the specified user from storage (AD06).
+     * This is a soft delete - the user is anonymized and marked as deleted.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(User $user)
     {
@@ -222,6 +264,32 @@ class AdminUserController extends Controller
 
             // Delete profile (R03)
             DB::table('profile')->where('id_user', $user->id_user)->delete();
+
+            // Auto-cancel published events organized by this user (only future/ongoing events)
+            $publishedEvents = Event::where('id_organizer', $user->id_user)
+                ->where('status', 'published')
+                ->where('end_at', '>', now()) // Only cancel events that haven't finished yet
+                ->get();
+
+            foreach ($publishedEvents as $event) {
+                $event->update(['status' => 'canceled']);
+
+                // Cancel pending invitations
+                Invitation::where('id_event', $event->id_event)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'canceled', 'responded_at' => now()]);
+
+                // Notify participants
+                $participants = $event->participants()->wherePivot('left_at', null)->get();
+                foreach ($participants as $participant) {
+                    Notification::create([
+                        'id_user' => $participant->id_user,
+                        'message' => 'event canceled',
+                        'id_event' => $event->id_event,
+                        'created_at' => now(),
+                    ]);
+                }
+            }
 
             // Remove participations, applications, invitations
             $user->participations()->delete();

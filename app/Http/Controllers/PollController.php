@@ -13,7 +13,11 @@ use Illuminate\Support\Facades\DB;
 class PollController extends Controller
 {
     /**
-     * Store a newly created poll in storage.
+     * Store a newly created poll in storage (OR06).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(Request $request, Event $event)
     {
@@ -59,7 +63,11 @@ class PollController extends Controller
     }
 
     /**
-     * Vote on a poll.
+     * Vote on a poll (AT06).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Poll  $poll
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function vote(Request $request, Poll $poll)
     {
@@ -83,7 +91,7 @@ class PollController extends Controller
         }
 
         $validated = $request->validate([
-            'option_id' => ['required', 'exists:poll_option,id_option'],
+            'option_id' => ['required', 'integer'],
         ]);
         
         // Verify option belongs to poll
@@ -112,8 +120,9 @@ class PollController extends Controller
             ]);
         }
 
-        if ($request->wantsJson()) {
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest' || str_contains($request->header('Accept'), 'application/json')) {
             return response()->json([
+                'success' => true,
                 'html' => view('events.partials.poll-card', [
                     'poll' => $poll->refresh()->load([
                         'options' => fn($q) => $q->withCount('votes'),
@@ -121,7 +130,7 @@ class PollController extends Controller
                     ]),
                     'event' => $poll->event
                 ])->render()
-            ]);
+            ], 200);
         }
 
         return back()->with('success', 'Vote recorded.');
@@ -129,6 +138,10 @@ class PollController extends Controller
 
     /**
      * Remove a vote from a poll.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Poll  $poll
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function removeVote(Request $request, Poll $poll)
     {
@@ -154,8 +167,9 @@ class PollController extends Controller
             ->where('id_participation', $participation->id_participation)
             ->delete();
 
-        if ($request->wantsJson()) {
+        if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
+                'success' => true,
                 'html' => view('events.partials.poll-card', [
                     'poll' => $poll->refresh()->load([
                         'options' => fn($q) => $q->withCount('votes'),
@@ -163,7 +177,7 @@ class PollController extends Controller
                     ]),
                     'event' => $poll->event
                 ])->render()
-            ]);
+            ], 200);
         }
 
         return back()->with('success', 'Vote removed.');
@@ -171,6 +185,9 @@ class PollController extends Controller
 
     /**
      * Delete a poll.
+     *
+     * @param  \App\Models\Poll  $poll
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Poll $poll)
     {

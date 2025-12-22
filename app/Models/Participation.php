@@ -6,22 +6,54 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Participation model represents a row in the pivot-like `participation` table
- * (user participates in an event). The table uses a composite primary key
- * (id_event, id_user). Laravel does not natively support composite primary
- * keys, so we override the save key logic for update operations.
+ * App\Models\Participation
+ *
+ * Represents a user's participation in an event (M03).
+ * The table uses a composite primary key (id_event, id_user).
+ *
+ * @property int $id_event
+ * @property int $id_user
+ * @property \Illuminate\Support\Carbon $joined_at
+ * @property \Illuminate\Support\Carbon|null $left_at
+ *
+ * @property-read \App\Models\Event $event
+ * @property-read \App\Models\User $user
  */
 class Participation extends Model
 {
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
     protected $table = 'participation';
 
-    // Composite key -> disable auto incrementing and timestamps.
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     *
+     * @var bool
+     */
     public $incrementing = false;
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
     public $timestamps = false;
 
-    // We will manually handle the composite key on save.
+    /**
+     * The primary key associated with the table.
+     *
+     * @var string|null
+     */
     protected $primaryKey = null; // hint: no single primary key column
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'id_event',
         'id_user',
@@ -29,6 +61,11 @@ class Participation extends Model
         'left_at',
     ];
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -38,7 +75,10 @@ class Participation extends Model
     }
 
     /**
-     * Ensure updates/deletes target the correct composite key row.
+     * Set the keys for a save update query.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     protected function setKeysForSaveQuery($query)
     {
@@ -47,13 +87,21 @@ class Participation extends Model
         return $query;
     }
 
-    /** Event this participation belongs to */
+    /**
+     * Get the event associated with the participation.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'id_event');
     }
 
-    /** User who participates */
+    /**
+     * Get the user associated with the participation.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'id_user');

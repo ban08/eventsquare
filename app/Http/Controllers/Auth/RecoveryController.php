@@ -11,15 +11,30 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * RecoveryController
+ * 
+ * Handles the password recovery process using security questions.
+ * This replaces the standard email-based reset flow.
+ */
 class RecoveryController extends Controller
 {
-    // Show the initial "forgot password" form asking for email.
+    /**
+     * Display the initial password recovery request form.
+     *
+     * @return \Illuminate\View\View
+     */
     public function showRequest()
     {
         return view('auth.forgot-password');
     }
 
-    // After email submission, show the user's security question.
+    /**
+     * Process the email submission and display security questions.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function showQuestion(Request $request)
     {
         $data = $request->validate([
@@ -31,7 +46,7 @@ class RecoveryController extends Controller
             return back()->withErrors(['email' => 'We could not find recovery questions for that account.']);
         }
 
-        // Load all suggested questions (fallback if table missing).
+        // Load suggested questions
         $suggestedQuestions = [];
         if (Schema::hasTable('security_question')) {
             $suggestedQuestions = SecurityQuestion::query()->orderBy('prompt')->get();
@@ -43,7 +58,7 @@ class RecoveryController extends Controller
             ]);
         }
 
-        // Store the user we are recovering for in session to avoid tampering.
+        // Store user ID in session for security
         $request->session()->put('recovery_user_id', $user->id_user);
 
         return view('auth.security-question', [
@@ -53,7 +68,12 @@ class RecoveryController extends Controller
         ]);
     }
 
-    // Validate answer + set new password.
+    /**
+     * Validate the security answer and reset the password.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function resetWithAnswer(Request $request)
     {
         $userId = $request->session()->get('recovery_user_id');
@@ -80,21 +100,21 @@ class RecoveryController extends Controller
                 ->withErrors(['email' => 'We could not find recovery data for that account.']);
         }
 
-        // Resolve the selected question prompt (from DB or fallback).
+        // Resolve the selected question prompt
         $prompt = null;
         if (Schema::hasTable('security_question')) {
             $prompt = SecurityQuestion::where('id_security_question', $questionId)->value('prompt');
         }
-        // If not found in suggestions table (e.g., table missing), use the submitted id only if 0 and fallback.
+        
         if (!$prompt && $questionId === 0) {
-            $prompt = $request->input('question_prompt'); // fallback not used in current form
+            $prompt = $request->input('question_prompt');
         }
 
         if (!$prompt) {
             return back()->withErrors(['question_id' => 'Please select a valid question.'])->withInput();
         }
 
-        // The user must have answered this question at signup.
+        // Verify the answer against the stored hash
         $answerRecord = SecurityAnswer::where('id_user', $user->id_user)
             ->where('question', $prompt)
             ->first();

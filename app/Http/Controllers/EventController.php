@@ -12,20 +12,35 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tag;
-use App\Models\Notification;
 use App\Models\Invitation;
+use App\Models\Notification;
 use Carbon\Carbon;
+use App\Models\PollVote;
 
+/**
+ * EventController
+ * 
+ * Manages the lifecycle of events including creation, updates, deletion,
+ * and participation. Implements complex business rules for visibility,
+ * capacity management, and time-based restrictions.
+ */
 class EventController extends Controller
 {
+    /**
+     * Display a listing of events.
+     * Implements search, filtering, and visibility rules.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $query = Event::query()
-            ->with('tags'); // Eager load tags for display (US03)
+            ->with('tags');
 
         // AD01: Admins can browse ALL events, regular users only see public/published
         if (!Gate::allows('admin')) {
-            // Global filter: Only published and future events (hides completed/canceled/draft/past)
+            // Global filter: Only published and future events
             $query->where('status', 'published')
                   ->where('start_at', '>', now());
 
@@ -39,24 +54,22 @@ class EventController extends Controller
                     $q->orWhereHas('participations', function ($p) use ($userId) {
                         $p->where('id_user', $userId);
                     })->orWhereHas('invitations', function ($i) use ($userId) {
-                        $i->where('id_invitee', $userId);
+                        $i->where('id_invitee', $userId)
+                          ->whereIn('status', ['pending', 'accepted']);
                     })->orWhere('id_organizer', $userId);
                 }
             });
         }
 
         $search = trim((string) $request->input('q', ''));
-        $tagFilters = $request->input('tags', []); // US03: Multiple tag-based exploration
+        $tagFilters = $request->input('tags', []);
         
-        // Ensure tagFilters is always an array
         if (!is_array($tagFilters)) {
             $tagFilters = $tagFilters ? [$tagFilters] : [];
         }
 
         // US03: Filter by tags if provided (events must have ALL selected tags)
         if (!empty($tagFilters)) {
-            // Validate tags against the database to prevent ENUM errors
-            // We fetch all tags first to avoid querying with invalid ENUM values which causes SQL errors
             $allTagNames = Tag::pluck('name')->toArray();
             $validTags = array_intersect($tagFilters, $allTagNames);
 
@@ -70,10 +83,8 @@ class EventController extends Controller
         // US05: Sort Events by Date
         $sort = $request->input('sort', 'date_asc');
 
-        // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)
-        // Uses search_fts tsvector column with weights: title='A', description/venue='B'
+        // 3.14: Full-text search with weighted ranking
         if ($search !== '') {
-            // Convert search terms to tsquery format with prefix matching
             $tsquery = $this->buildTsQuery($search);
             
             if ($tsquery) {
@@ -106,26 +117,30 @@ class EventController extends Controller
         ]);
     }
 
+    /**
+     * API endpoint for event search.
+     * Returns JSON response for AJAX search functionality.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function searchApi(Request $request)
     {
         $query = Event::query()
-            ->with('tags') // US03: Include tags in API response
+            ->with('tags')
             ->where('visibility', 'public')
             ->where('status', 'published')
             ->where('start_at', '>', now()); // BR14: Only future events
 
         $search = trim((string) $request->input('q', ''));
-        $tagFilters = $request->input('tags', []); // US03: Multiple tag-based exploration
+        $tagFilters = $request->input('tags', []);
         
-        // Ensure tagFilters is always an array
         if (!is_array($tagFilters)) {
             $tagFilters = $tagFilters ? [$tagFilters] : [];
         }
 
-        // US03: Filter by tags if provided (events must have ALL selected tags)
+        // US03: Filter by tags if provided
         if (!empty($tagFilters)) {
-            // Validate tags against the database to prevent ENUM errors
-            // We fetch all tags first to avoid querying with invalid ENUM values which causes SQL errors
             $allTagNames = Tag::pluck('name')->toArray();
             $validTags = array_intersect($tagFilters, $allTagNames);
 
@@ -136,7 +151,7 @@ class EventController extends Controller
             }
         }
 
-        // 3.14: Full-text search with weighted ranking (IDX04 in EBD A6)
+        // 3.14: Full-text search with weighted ranking
         if ($search !== '') {
             $tsquery = $this->buildTsQuery($search);
             
@@ -149,7 +164,7 @@ class EventController extends Controller
 
         $events = $query->paginate(10);
 
-        // US03: Transform response to include tag names
+        // Transform response to include tag names
         $result = $events->map(function ($event) {
             return [
                 'id' => $event->id_event,
@@ -164,11 +179,13 @@ class EventController extends Controller
         return response()->json($result);
     }
 
-    // Show the form to create a new event.
-    // Only for users who are logged in.
+    /**
+     * Show the form for creating a new event.
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function create()
     {
-        // If the user is NOT logged in, send them to the login page
         if (!Auth::check()) {
             return redirect()->route('login');
         }
@@ -179,19 +196,19 @@ class EventController extends Controller
                 ->with('error', 'Administrators cannot create events.');
         }
 
-        // Get all tags from the database so we can show them in the form.
         $tags = Tag::all();
 
-        // Show the "create event" view and pass the tags to it.
         return view('events.create', compact('tags'));
     }
 
-
-
-    // Store a newly created event in the database.
+    /**
+     * Store a newly created event in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
-        // Make sure only logged-in users can create events.
         if (!Auth::check()) {
             return redirect()->route('login');
         }
@@ -202,8 +219,7 @@ class EventController extends Controller
                 ->with('error', 'Administrators cannot create events.');
         }
 
-        // 1. Validate the form data
-        // This checks that the user filled in the fields correctly.
+        // 1. Validate input parameters
         $validated = $request->validate([
             'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -216,12 +232,10 @@ class EventController extends Controller
             'tags.*'      => ['integer', 'exists:tag,id_tag'],            
         ]);
 
-        // 2. Extra rule: start_at at least 48 hours from now.
+        // 2. Enforce business rule: Event must start at least 48 hours from creation
         $startAt = Carbon::parse($validated['start_at']);
 
-        // If start time is earlier than "now + 48 hours"
         if ($startAt->lt(now()->addHours(48))) {
-            // Go back to the form with an error message and keep the old input.
             return back()
                 ->withErrors([
                     'start_at' => 'The event must start at least 48 hours from now.'
@@ -229,7 +243,7 @@ class EventController extends Controller
                 ->withInput();
         }
 
-        // 3. Create and save the new event in the database
+        // 3. Persist event to database
         $event = Event::create([
             'title'        => $validated['title'],
             'description'  => $validated['description'] ?? null,
@@ -238,22 +252,26 @@ class EventController extends Controller
             'venue'        => $validated['venue'],
             'capacity'     => $validated['capacity'],
             'visibility'   => $validated['visibility'],
-            'status'       => 'published',                // new events start as "published".
-            'id_organizer' => Auth::id(),                 // current user is the organizer.
+            'status'       => 'published',
+            'id_organizer' => Auth::id(),
         ]);
 
-        // 4. If the user selected any tags, attach them to the event
+        // 4. Attach tags if provided
         if (!empty($validated['tags'])) {
             $event->tags()->attach($validated['tags']);
         }        
 
-        // 5. Redirect the user to the event page with a success message.
         return redirect()
             ->route('events.show', $event->id_event)
             ->with('success', 'Event created successfully!');
     }
 
-    // Display a single event so that people can find it.
+    /**
+     * Display the specified event.
+     *
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\View\View
+     */
     public function show(Event $event)
     {
         // BR02: Private events are hidden from search and public view.
@@ -277,14 +295,14 @@ class EventController extends Controller
             }
         }
 
-        // Eager-load invitations + invitee user to avoid N+ queries when listing invitations.
+        // Eager-load relationships
         $event->load([
             'invitations.invitee', 
             'applications.user', 
             'polls.options' => function($query) {
                 $query->withCount('votes');
             },
-            'polls.votes' // Load all votes to check user participation in view (acceptable for scale)
+            'polls.votes'
         ]);
 
         $isParticipant = Auth::check() ? $event->participations()->where('id_user', Auth::id())->whereNull('left_at')->exists() : false;
@@ -292,11 +310,13 @@ class EventController extends Controller
         return view('events.show', compact('event', 'isParticipant'));
     }
 
-
-    // List events created by the logged-in user ("My Events").
+    /**
+     * List events created by or participated in by the logged-in user.
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function mine()
     {
-        // If not logged in, send to login
         if (!Auth::check()) {
             return redirect()->route('login');
         }
@@ -321,48 +341,49 @@ class EventController extends Controller
         ]);
     }   
     
-    // Show the form for editing an existing event
+    /**
+     * Show the form for editing the specified event.
+     *
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\View\View
+     */
     public function edit(Event $event)
     {
-        // Only the organizer can edit this event
         if (!Auth::check() || Auth::id() !== $event->id_organizer) {
             abort(403, 'You are not allowed to edit this event.');
         }
 
-        // Completed events cannot be edited
         if ($event->is_past) {
             abort(403, 'Completed events cannot be edited.');
         }
 
-        // Canceled events cannot be edited
         if ($event->status === 'canceled') {
             abort(403, 'Canceled events cannot be edited.');
         }
 
-        // All tags in the system
         $tags = Tag::all();
-
-        // IDs of tags already attached to this event
         $selectedTags = $event->tags->pluck('id_tag')->toArray();
 
         return view('events.edit', compact('event', 'tags', 'selectedTags'));        
     } 
     
-
-    // Update an existing event in the database
+    /**
+     * Update the specified event in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, Event $event)
     {
-        // Only the organizer may update
         if (!Auth::check() || Auth::id() !== $event->id_organizer) {
             abort(403, 'You are not allowed to edit this event.');
         }
 
-
-        // Completed events cannot be edited
         if ($event->is_past) {
             abort(403, 'Completed events cannot be edited.');
         }
-        // Canceled events cannot be edited
+
         if ($event->status === 'canceled') {
             abort(403, 'Canceled events cannot be edited.');
         }
@@ -372,9 +393,8 @@ class EventController extends Controller
             abort(403, 'Events cannot be edited less than 24 hours before they start.');
         }
         
-        // 1. Validate inputs (same as in store())
+        // 1. Validate inputs
         $validated = $request->validate([
-            // 'title'       => ['required', 'string', 'max:255'], --- don't edit
             'description' => ['nullable', 'string'],
             'start_at'    => ['required', 'date'],
             'end_at'      => ['required', 'date', 'after:start_at'],
@@ -384,17 +404,6 @@ class EventController extends Controller
             'tags'        => ['nullable', 'array'],
             'tags.*'      => ['integer', 'exists:tag,id_tag'],
         ]);
-
-        // 2. Keep the "48 hours from now" rule
-        $startAt = Carbon::parse($validated['start_at']);
-
-        if ($startAt->lt(now()->addHours(48))) {
-            return back()
-                ->withErrors([
-                    'start_at' => 'The event must start at least 48 hours from now.',
-                ])
-                ->withInput();
-        }
 
         // Check if capacity is lower than current attendees
         if ($validated['capacity'] < $event->current_participants_count) {
@@ -407,7 +416,6 @@ class EventController extends Controller
 
         // 3. Update event fields
         $event->update([
-            // 'title'       => $validated['title'], --- don't edit
             'description' => $validated['description'] ?? null,
             'start_at'    => $validated['start_at'],
             'end_at'      => $validated['end_at'],
@@ -416,14 +424,13 @@ class EventController extends Controller
             'visibility'  => $validated['visibility']
         ]);
 
-        // 4. Update tags (sync replaces existing tags with the new list)
+        // 4. Update tags
         $event->tags()->sync($validated['tags'] ?? []);
 
         // AT09: Notify all current participants about the update
         $participants = $event->participants()->wherePivot('left_at', null)->get();
         
         foreach ($participants as $participant) {
-            // Avoid notifying the organizer if they are also a participant
             if ($participant->id_user !== Auth::id()) {
                  Notification::create([
                     'id_user' => $participant->id_user,
@@ -434,22 +441,23 @@ class EventController extends Controller
             }
         }
 
-        // 5. Redirect back to event details
         return redirect()
             ->route('events.show', $event->id_event)
             ->with('success', 'Event updated successfully!');
     }
 
-    // Cancel an event.
-    // Only the organizer can cancel, and only published events can be canceled.
+    /**
+     * Cancel the specified event.
+     *
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function cancel(Event $event)
     {
-        // If user is not logged in OR is not the organizer, forbid access
         if (!Auth::check() || Auth::id() !== $event->id_organizer) {
             abort(403, 'You are not allowed to cancel this event.');
         }
 
-        // Only published events can be canceled
         if ($event->status !== 'published') {
             return back()->with('error', 'Only published events can be canceled.');
         }
@@ -459,15 +467,14 @@ class EventController extends Controller
             return back()->with('error', 'Events cannot be canceled less than 24 hours before they start.');
         }
 
-        // Update the event status to canceled
         $event->update(['status' => 'canceled']);
 
-        // Cancel all pending invitations for this event
+        // Cancel all pending invitations
         Invitation::where('id_event', $event->id_event)
             ->where('status', 'pending')
             ->update(['status' => 'canceled', 'responded_at' => now()]);
 
-        // AT09: Notify all current participants about the cancellation (as an update)
+        // AT09: Notify all current participants
         $participants = $event->participants()->wherePivot('left_at', null)->get();
         
         foreach ($participants as $participant) {
@@ -481,48 +488,42 @@ class EventController extends Controller
             }
         }
 
-        // Redirect to event details
         return redirect()
             ->route('events.show', $event->id_event)
             ->with('success', 'Event has been canceled successfully.');
     }
     
-    
-    // Delete an event (OR08 for organizers, AD03 for admins).
-    // Organizers can only delete their own events with no activity.
-    // Admins can delete any event to remove harmful content.
+    /**
+     * Remove the specified event from storage.
+     *
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(Event $event)
     {
         $isAdmin = Gate::allows('admin');
         $isOrganizer = Auth::check() && Auth::id() === $event->id_organizer;
 
-        // Must be either the organizer or an admin
         if (!$isAdmin && !$isOrganizer) {
             abort(403, 'You are not allowed to delete this event.');
         }
 
         // For organizers: check if the event can be hard deleted (no attendees)
-        // Admins can delete any event regardless of activity (AD03)
         if (!$isAdmin && !$event->can_hard_delete) {
-            // If the event has attendees, we should cancel it instead of deleting it
-            // But first, check if it's already canceled
             if ($event->status === 'canceled') {
                  return redirect()
                     ->route('events.mine')
                     ->with('error', 'This event is already canceled and cannot be deleted because it has history.');
             }
             
-            // If not canceled, suggest canceling
             return redirect()
                 ->route('events.mine')
                 ->with('error', 'This event has attendees. Please cancel it instead of deleting.');
         }
 
-        // Store event info for logging before deletion
         $eventTitle = $event->title;
         $eventId = $event->id_event;
 
-        // Use transaction for admin actions to ensure audit log is created
         DB::transaction(function () use ($event, $isAdmin, $eventTitle, $eventId) {
             // AD03: Log admin action if admin is deleting
             if ($isAdmin) {
@@ -542,61 +543,48 @@ class EventController extends Controller
                 }
             }
 
-            // Delete the event from the database.
-            // Foreign key cascading handles related rows.
             $event->delete();
         });
 
-        // Redirect based on who deleted
         if ($isAdmin) {
             return redirect()
                 ->route('events.index')
                 ->with('success', 'Event "' . $eventTitle . '" deleted successfully by administrator.');
         }
 
-        // After deleting, send the organizer back to "My events" page with a success message.
         return redirect()
             ->route('events.mine')
             ->with('success', 'Event deleted successfully!');
     }
 
 
-    //Apply to an event (RU09)
+    /**
+     * Handle a user applying to join an event.
+     *
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function apply(Event $event)
     {
-        $user = Auth::user(); //user autenticado
+        $user = Auth::user();
 
         // BR13: Admins cannot participate in events
         if (Gate::allows('admin')) {
             return back()->with('error', 'Administrators cannot participate in events.');
         }
 
-        // Organizer cannot apply to their own event
-        // if ($event->id_organizer === $user->id_user) {
-        //     return back()->with('error', 'Organizers cannot apply to their own event.');
-        // }
-
-        // Registration closes 24 hours before event start
-        if ($event->start_at->copy()->subHours(24)->isPast()) {
-            return back()->with('error', 'Registration closed 24 hours before event start.');
-        }
-
-        // Cannot apply to non-published events (including canceled)
         if ($event->status !== 'published') {
             return back()->with('error', 'You can only apply to published events.');
         }
 
-        // Cannot apply if event has ended
         if ($event->is_past) {
         return back()->with('error', 'You can no longer apply to a past event.');
         }
 
-        // Cannot apply if event full
         if ($event->is_full) {
             return back()->with('error', 'This event is already full.');
         }
 
-        // Cannot apply if organizer
         if ($event->id_organizer === $user->id_user) {
             return back()->with('error', 'You cannot join your own event.');
         }
@@ -607,19 +595,22 @@ class EventController extends Controller
             ->first();
 
         if ($existingApplication) {
-            if (in_array($existingApplication->status, ['pending', 'approved'])) {
-                return back()->with('error', 'You have already applied to this event.');
+            if (in_array($existingApplication->status, ['rejected', 'canceled'])) {
+                $existingApplication->update([
+                    'status' => 'pending',
+                    'created_at' => now(),
+                    'decided_at' => null,
+                ]);
+
+                return back()->with('success', 'Your request to join this event was submitted!');
             }
-            if ($existingApplication->status === 'rejected') {
-                return back()->with('error', 'Your application to this event was rejected.');
-            }
-            // If canceled, we allow re-applying
+
+            return back()->with('error', 'You have already applied to this event.');
         }
 
         // Cannot apply if already participant
-        $alreadyParticipant = $event->participations()
-            ->where('id_user', $user->id_user)
-            ->whereNull('left_at')
+        $alreadyParticipant = $event->participants()
+            ->where('participation.id_user', $user->id_user)
             ->exists();
 
         if ($alreadyParticipant) {
@@ -656,42 +647,29 @@ class EventController extends Controller
             return back()->with('success', 'You had a pending invitation. You have successfully joined the event!');
         }
 
-        // Create new application or update canceled one
-        if (isset($existingApplication) && $existingApplication->status === 'canceled') {
-            $existingApplication->update([
-                'status' => 'pending',
-                'created_at' => now(),
-                'decided_at' => null
-            ]);
-            $application = $existingApplication;
-        } else {
-            $application = $event->applications()->create([
-                'id_user' => $user->id_user,
-                'status'   => 'pending',    
-                'created_at' => now()
-            ]);
-        }
-
-        // Notify organizer
-        \App\Models\Notification::create([
-            'id_user' => $event->id_organizer,
-            'message' => 'new application',
-            'id_event' => $event->id_event,
-            'id_application' => $application->id_application,
-            'created_at' => now(),
+        // Create new application
+        $event->applications()->create([
+            'id_user' => $user->id_user,
+            'status'   => 'pending',    
+            'created_at' => now()
         ]);
 
         return back()->with('success', 'Your request to join this event was submitted!');
     }
 
-    // Leave an event (AT01)
+
+    /**
+     * Handle a user leaving an event.
+     *
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function leave(Event $event)
     {
         if (!Auth::check()) {
             return redirect()->route('login');
         }
 
-        // Check if user is actually participating
         $participation = $event->participations()
             ->where('id_user', Auth::id())
             ->whereNull('left_at')
@@ -706,12 +684,14 @@ class EventController extends Controller
              return back()->with('error', 'You cannot leave the event less than 24 hours before it starts.');
         }
 
+        //Erase user poll votes when he leaves the event
+        PollVote::where('id_participation', $participation->id_participation)->delete();
+
         // Update left_at
         $participation->left_at = now();
         $participation->save();
 
         // Remove poll votes associated with this participation
-        // We use the DB facade to directly delete from the poll_vote table using the participation ID
         DB::table('poll_vote')->where('id_participation', $participation->id_participation)->delete();
 
         // Clear all notifications related to this event for the user
@@ -722,7 +702,7 @@ class EventController extends Controller
         // Notify organizer
         \App\Models\Notification::create([
             'id_user' => $event->id_organizer,
-            'message' => 'user left',
+            'message' => 'event updated',
             'id_event' => $event->id_event,
             'created_at' => now(),
         ]);
@@ -740,7 +720,14 @@ class EventController extends Controller
         return back()->with('success', 'You have left the event.');
     }
 
-    // Remove a participant from the event (Organizer only)
+    /**
+     * Remove a participant from an event (Organizer action).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Event  $event
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function removeParticipant(Request $request, Event $event, User $user)
     {
         if (!Auth::check() || Auth::id() !== $event->id_organizer) {
@@ -772,7 +759,7 @@ class EventController extends Controller
             ->first();
             
         if ($application) {
-            $application->status = 'rejected'; // Or canceled, but rejected implies forced removal
+            $application->status = 'rejected';
             $application->save();
         }
 

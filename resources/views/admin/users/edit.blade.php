@@ -36,12 +36,12 @@
                         <div class="flex items-center gap-6">
                             <div class="relative w-24 h-24 rounded-full bg-white border-4 border-white shadow-md overflow-hidden shrink-0">
                                 @if($user->profile && $user->profile->photo_url)
-                                    <img id="preview-image" src="{{ Str::startsWith($user->profile->photo_url, 'http') ? $user->profile->photo_url : (Str::startsWith($user->profile->photo_url, 'storage/') ? asset($user->profile->photo_url) : asset('storage/' . $user->profile->photo_url)) }}" class="w-full h-full object-cover">
+                                    <img id="preview-image" src="{{ Str::startsWith($user->profile->photo_url, 'http') ? $user->profile->photo_url : (Str::startsWith($user->profile->photo_url, 'storage/') ? asset($user->profile->photo_url) : asset('storage/' . $user->profile->photo_url)) }}" alt="Current profile photo" class="w-full h-full object-cover">
                                 @else
                                     <div id="preview-placeholder" class="w-full h-full flex items-center justify-center text-slate-300 bg-slate-100">
                                         <i class="fas fa-user text-3xl"></i>
                                     </div>
-                                    <img id="preview-image" src="#" class="hidden w-full h-full object-cover">
+                                    <img id="preview-image" src="#" alt="New profile photo preview" class="hidden w-full h-full object-cover">
                                 @endif
                             </div>
                             <div class="flex-1">
@@ -143,7 +143,7 @@
             </div>
             <h2 class="text-xl font-bold text-slate-900 mb-2">Delete User Account</h2>
             <p class="text-slate-600 text-sm leading-relaxed">
-                Are you sure you want to delete this user? This action will permanently remove their profile, events, and all associated data. This cannot be undone.
+                Are you sure you want to delete this user? This action will permanently remove their profile, cancel all their organized events, and anonymize their data. This cannot be undone.
             </p>
         </div>
         <div class="bg-slate-50 px-6 py-4 flex justify-end gap-3">

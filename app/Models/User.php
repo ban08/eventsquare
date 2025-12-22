@@ -5,44 +5,53 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-
-// Import Eloquent relationship classes.
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\Profile;
-use App\Models\SecurityAnswer;
-use App\Models\Event;
-use App\Models\Participation;
 
+/**
+ * App\Models\User
+ *
+ * Represents a registered user in the system (R01).
+ *
+ * @property int $id_user
+ * @property string $name
+ * @property string $email
+ * @property string $password_hash
+ * @property string|null $location
+ * @property string $status 'active', 'blocked', 'deleted'
+ * @property string|null $remember_token
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * 
+ * @property-read \App\Models\Profile|null $profile
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Event[] $events
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Participation[] $participations
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Application[] $applications
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Invitation[] $invitations
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\SecurityAnswer[] $securityAnswers
+ */
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    // Tell Laravel which database table this model uses.
-    // Our table is called 'user' instead of the default 'users'.    
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
     protected $table = 'user';
 
-    // Tell Laravel which column is the primary key in the 'user' table.
-    // Here it is 'id_user' instead of the default 'id'.    
-    protected $primaryKey = 'id_user';    
-
-    /*
-    // If we uncomment this, Laravel will NOT automatically manage
-    // the created_at and updated_at columns.
-    public $timestamps  = false;
-    */
+    /**
+     * The primary key associated with the table.
+     *
+     * @var string
+     */
+    protected $primaryKey = 'id_user';
 
     /**
      * The attributes that are mass assignable.
      *
-     * These are the fields we allow Laravel to fill in automatically
-     * when we do User::create([...]) or $user->update([...]).
-     * This helps protect us from accidentally writing to fields
-     * we did not intend to change.
-     *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
@@ -53,87 +62,90 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden when the model is converted
-     * to an array or JSON.
+     * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password_hash',
         'remember_token',
     ];
 
-
-  
     /**
-     * The attributes that should be cast to a specific type.
-     * Here we tell Laravel to always hash the password_hash field
-     * when it is set.     
+     * Get the route key for the model.
      *
-     * @return array<string, string>
+     * @return string
      */
-    //protected function casts(): array
-    //{
-    //    return [
-    //        'email_verified_at' => 'datetime',
-    //        // Ensures password is always hashed automatically when set.
-    //        'password' => 'hashed',
-    //    ];
-    //}   
-
-
     public function getRouteKeyName()
     {
         return 'id_user';
     }
 
-    /*
-    public function cards(): HasMany
-    {
-        return $this->hasMany(Card::class);
-    }
-    */
-
     /**
-     * Tell Laravel which field should be used as the "password"
-     * for authentication.
+     * Get the password for the user.
      *
-     * By default Laravel expects a 'password' column,
-     * but in our database the column is called 'password_hash',
-     * so we return that instead.
+     * @return string
      */
     public function getAuthPassword()
     {
         return $this->password_hash;
     }
 
-    // R03 profile (1:1) per ER/EBD
+    /**
+     * Get the profile associated with the user (R03).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class, 'id_user', 'id_user');
     }
 
-    // Each user can have one or more security questions/answers for password recovery.
+    /**
+     * Get the security answers for the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function securityAnswers(): HasMany
     {
         return $this->hasMany(SecurityAnswer::class, 'id_user', 'id_user');
     }
 
+    /**
+     * Get the events organized by the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function events(): HasMany
     {
         return $this->hasMany(Event::class, 'id_organizer');
     }
 
+    /**
+     * Get the participations of the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function participations(): HasMany
     {
         return $this->hasMany(Participation::class, 'id_user');
     }
 
+    /**
+     * Get the applications made by the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class, 'id_user');
     }
 
+    /**
+     * Get the invitations received by the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class, 'id_invitee');

@@ -9,11 +9,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Event;
+use App\Models\Invitation;
+use App\Models\Notification;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    // RU01
+    /**
+     * Display the specified user profile (RU01).
+     *
+     * @param  \App\Models\User|null  $user
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function show(User $user = null)
     {
         // If no user provided, show current user
@@ -51,7 +59,11 @@ class ProfileController extends Controller
         ]);
     }
 
-    // RU02 – Show edit form
+    /**
+     * Show the form for editing the profile (RU02).
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function edit(): View
     {
         $user = Auth::user();
@@ -71,7 +83,12 @@ class ProfileController extends Controller
         ]);
     }
 
-    // RU02 & RU03 – Handle update
+    /**
+     * Update the user's profile (RU02 & RU03).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request)
     {
         $user = Auth::user();
@@ -113,7 +130,13 @@ class ProfileController extends Controller
             ->with('success', 'Your profile has been updated successfully.');
     }
 
-    // RU07 - Delete Account
+    /**
+     * Delete the user's account (RU07).
+     * This is a soft delete - the user is anonymized and marked as deleted.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(Request $request)
     {
         $request->validate([
@@ -128,33 +151,34 @@ class ProfileController extends Controller
             $user->profile->update(['photo_url' => null]);
         }
 
+        // Auto-cancel published events organized by this user (only future/ongoing events)
+        $publishedEvents = Event::where('id_organizer', $user->id_user)
+            ->where('status', 'published')
+            ->where('end_at', '>', now()) // Only cancel events that haven't finished yet
+            ->get();
+
+        foreach ($publishedEvents as $event) {
+            $event->update(['status' => 'canceled']);
+
+            Invitation::where('id_event', $event->id_event)
+                ->where('status', 'pending')
+                ->update(['status' => 'canceled', 'responded_at' => now()]);
+
+            $participants = $event->participants()->wherePivot('left_at', null)->get();
+            foreach ($participants as $participant) {
+                Notification::create([
+                    'id_user' => $participant->id_user,
+                    'message' => 'event canceled',
+                    'id_event' => $event->id_event,
+                    'created_at' => now(),
+                ]);
+            }
+        }
+
         // Remove participations, applications, invitations
         $user->participations()->delete();
         $user->applications()->delete();
         $user->invitations()->delete();
-
-        // Cancel all active events organized by this user
-        $organizedEvents = \App\Models\Event::where('id_organizer', $user->id_user)
-            ->where('status', 'published')
-            ->where('start_at', '>', now())
-            ->get();
-
-        foreach ($organizedEvents as $event) {
-            $event->update(['status' => 'canceled']);
-            
-            // Notify participants
-            $participants = $event->participants()->wherePivot('left_at', null)->get();
-            foreach ($participants as $participant) {
-                if ($participant->id_user !== $user->id_user) {
-                    \App\Models\Notification::create([
-                        'id_user' => $participant->id_user,
-                        'message' => 'event canceled',
-                        'id_event' => $event->id_event,
-                        'created_at' => now(),
-                    ]);
-                }
-            }
-        }
 
         // Anonymize and Soft Delete
         $user->name = 'Deleted User';
@@ -171,4 +195,3 @@ class ProfileController extends Controller
         return redirect('/')->with('success', 'Your account has been successfully deleted.');
     }
 }
-

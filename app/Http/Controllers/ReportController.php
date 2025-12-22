@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\Gate;
 
 class ReportController extends Controller
 {
+    /**
+     * Store a newly created report for an event (RU11).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request, Event $event)
     {
         // Prevent admins from reporting events

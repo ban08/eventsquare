@@ -8,21 +8,67 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-
-// The Event model represents one row in the "event" table in the database.
+/**
+ * App\Models\Event
+ *
+ * Represents an event in the system (M02).
+ *
+ * @property int $id_event
+ * @property string $title
+ * @property string $description
+ * @property string $visibility 'public', 'private'
+ * @property string $status 'published', 'completed', 'canceled', 'draft', 'deleted'
+ * @property int $capacity
+ * @property \Illuminate\Support\Carbon $start_at
+ * @property \Illuminate\Support\Carbon|null $end_at
+ * @property string|null $venue
+ * @property int $id_organizer
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $canceled_at
+ *
+ * @property-read \App\Models\User $organizer
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Participation[] $participations
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\User[] $participants
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Application[] $applications
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Invitation[] $invitations
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\EventReport[] $reports
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Tag[] $tags
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Poll[] $polls
+ *
+ * @property-read int $current_participants_count
+ * @property-read bool $is_full
+ * @property-read bool $is_upcoming
+ * @property-read bool $is_past
+ * @property-read bool $is_ongoing
+ * @property-read string $effective_status
+ * @property-read bool $is_editable
+ * @property-read bool $is_cancelable
+ * @property-read bool $can_hard_delete
+ */
 class Event extends Model
 {
     use HasFactory;
 
-
-    // Tell Laravel which database table this model uses.
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
     protected $table = 'event';
 
-
-    // Tell Laravel which column is the primary key of this table.
+    /**
+     * The primary key associated with the table.
+     *
+     * @var string
+     */
     protected $primaryKey = 'id_event';
 
-    // Attributes (columns) that can be mass-assigned.
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'title',
         'description',
@@ -35,13 +81,21 @@ class Event extends Model
         'id_organizer', 
     ];
 
-
+    /**
+     * Get the polls for the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function polls(): HasMany
     {
         return $this->hasMany(Poll::class, 'id_event');
     }
 
-    // Convert some columns to special PHP types automatically.
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -53,25 +107,31 @@ class Event extends Model
         ];
     }
 
-
-    // This event BELONGS TO one organizer (a User).
-    // $event->organizer- returns the User who organized the event
+    /**
+     * Get the organizer of the event (BR09).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function organizer(): BelongsTo
     {
-        // 'id_organizer' is the foreign key column in the "event" table
         return $this->belongsTo(User::class, 'id_organizer');
     }
 
-    // This event HAS MANY participations.
-    // $event->participations- returns a collection of Participation objects
+    /**
+     * Get the participations for the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function participations(): HasMany
     {
-        // 'id_event' is the foreign key column in the "participation" table
         return $this->hasMany(Participation::class, 'id_event');
     }
 
-    // This event has many PARTICIPANTS (Users) through the participation table.
-    // $event->participants  // returns a collection of User objects
+    /**
+     * Get the participants of the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     public function participants(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -81,33 +141,45 @@ class Event extends Model
             'id_user'          
         )
         ->withPivot('joined_at', 'left_at')
-        ->wherePivot('left_at', null)
-        ->where('user.status', '!=', 'deleted'); 
+        ->wherePivotNull('left_at')
+        ->where('user.status', '!=', 'deleted');
     }
 
-    // This event HAS MANY applications (people who applied to join).
+    /**
+     * Get the applications for the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class, 'id_event');
     }
 
-    // This event HAS MANY invitations.
+    /**
+     * Get the invitations for the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class, 'id_event');
     }
 
-    // This event HAS MANY reports.
+    /**
+     * Get the reports for the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function reports(): HasMany
     {
         return $this->hasMany(EventReport::class, 'id_event');
     }
 
-    // Get the number of current participants.
-    // This makes a "virtual" attribute:
-    //   $event->current_participants_count
-    // It counts how many participations do NOT have "left_at" filled
-    // (meaning the user has not left the event) AND the user is not deleted.
+    /**
+     * Get the number of current participants.
+     *
+     * @return int
+     */
     public function getCurrentParticipantsCountAttribute(): int
     {
         return $this->participations()
@@ -118,44 +190,43 @@ class Event extends Model
             ->count();
     }
 
-    // Check if the event is full.
-    // This creates a "virtual" boolean attribute:
-    //   $event->is_full
-    // It compares the number of current participants with the capacity.
+    /**
+     * Check if the event is full (BR10).
+     *
+     * @return bool
+     */
     public function getIsFullAttribute(): bool
     {
-        // Uses the accessor above: current_participants_count
         return $this->current_participants_count >= $this->capacity;
     }
 
-    // Check if the event is upcoming (in the future).
-    // Virtual attribute:
-    //   $event->is_upcoming
-    // It is upcoming if the start date/time is later than now.
+    /**
+     * Check if the event is upcoming.
+     *
+     * @return bool
+     */
     public function getIsUpcomingAttribute(): bool
     {
         return $this->start_at > now();
     }
 
-    // Check if the event is in the past.
-    // Virtual attribute:
-    // $event->is_past
-    // If "end_at" exists, it uses that.
-    // Otherwise it uses "start_at" to decide if the event is past.
+    /**
+     * Check if the event is in the past.
+     *
+     * @return bool
+     */
     public function getIsPastAttribute(): bool
     {
-        // If there is an end time, check if that is before now
-        // Otherwise, fall back to the start time
         return $this->end_at
             ? $this->end_at < now()
             : $this->start_at < now();
     }
 
-    // Check if the event is happening right now (ongoing).
-    // Virtual attribute:
-    // $event->is_ongoing
-    // It is ongoing if:
-    // start_at <= now <= end_at
+    /**
+     * Check if the event is ongoing.
+     *
+     * @return bool
+     */
     public function getIsOngoingAttribute(): bool
     {
         $now = now();
@@ -164,41 +235,54 @@ class Event extends Model
             &&  $this->end_at >= $now;
     }
 
-    // Only public events.
-    // Usage example:
-    //   Event::public()->get();
-    // This adds "WHERE visibility = 'public'" to the query.
+    /**
+     * Scope a query to only include public events (BR02).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
     public function scopePublic($query)
     {
         return $query->where('visibility', 'public');
     }
 
-    // Only published events.
-    // Usage example:
-    //   Event::published()->get();
-    // This adds "WHERE status = 'published'" to the query.
+    /**
+     * Scope a query to only include published events (BR14).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
     public function scopePublished($query)
     {
         return $query->where('status', 'published');
     }
 
-    // Only upcoming events.
-    // Usage example:
-    //   Event::upcoming()->get();
-    // This adds "WHERE start_at > now()" to the query.
+    /**
+     * Scope a query to only include upcoming events.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
     public function scopeUpcoming($query)
     {
         return $query->where('start_at', '>', now());
     }
 
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
     public function getRouteKeyName()
     {
         return 'id_event';
     }
 
-    // This event has many tags (many-to-many).
-    // Usage example:
-    //   $event->tags
+    /**
+     * Get the tags for the event.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -209,9 +293,11 @@ class Event extends Model
         );
     }
 
-    // Get the effective status of the event.
-    // Returns 'completed' if the event has ended, regardless of stored status.
-    // This ensures completed events cannot be edited even if status wasn't updated in DB.
+    /**
+     * Get the effective status of the event.
+     *
+     * @return string
+     */
     public function getEffectiveStatusAttribute(): string
     {
         // For canceled events, keep the canceled status even if past
@@ -225,24 +311,31 @@ class Event extends Model
         return $this->status;
     }
 
-    // Check if the event can be edited.
-    // Events that have ended or are canceled cannot be edited.
+    /**
+     * Check if the event can be edited (BR06).
+     *
+     * @return bool
+     */
     public function getIsEditableAttribute(): bool
     {
         return !$this->is_past && $this->status !== 'canceled';
     }
 
-    // Check if the event can be canceled.
-    // Only published events that haven't ended can be canceled.
+    /**
+     * Check if the event can be canceled.
+     *
+     * @return bool
+     */
     public function getIsCancelableAttribute(): bool
     {
         return $this->status === 'published' && !$this->is_past;
     }
 
-    // Check if the event can be hard deleted.
-    // Events can only be hard deleted if they have no CURRENT activity:
-    // - No active participations (users who haven't left)
-    // Past participations are allowed (will be deleted via cascade)
+    /**
+     * Check if the event can be hard deleted.
+     *
+     * @return bool
+     */
     public function getCanHardDeleteAttribute(): bool
     {
         // Check if there are any active participations

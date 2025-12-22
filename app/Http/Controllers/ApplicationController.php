@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 class ApplicationController extends Controller
 {
+    /**
+     * Accept a user's application to join an event (OR04).
+     *
+     * @param  \App\Models\Application  $application
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function accept(Application $application)
     {
         $event = $application->event;
@@ -51,9 +57,9 @@ class ApplicationController extends Controller
             // Notify user
             Notification::create([
                 'id_user' => $application->id_user,
-                'message' => 'application accepted',
+                'message' => 'event updated',
                 'id_event' => $event->id_event,
-                'id_application' => $application->id_application,
+                //'id_application' => $application->id_application,
                 'created_at' => now(),
             ]);
         });
@@ -61,6 +67,12 @@ class ApplicationController extends Controller
         return back()->with('success', 'Application accepted. User added to participants.');
     }
 
+    /**
+     * Reject a user's application to join an event (OR04).
+     *
+     * @param  \App\Models\Application  $application
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function reject(Application $application)
     {
         $event = $application->event;
@@ -84,9 +96,9 @@ class ApplicationController extends Controller
             // Notify user
             Notification::create([
                 'id_user' => $application->id_user,
-                'message' => 'application rejected',
+                'message' => 'event updated',
                 'id_event' => $event->id_event,
-                'id_application' => $application->id_application,
+                //'id_application' => $application->id_application,
                 'created_at' => now(),
             ]);
         });

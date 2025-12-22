@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\DB;
 class NotificationController extends Controller
 {
     /**
-     * Display the notifications page.
-     * Shows notifications and pending invitations (RU10).
+     * Display the notifications page (RU10).
+     * Shows notifications and pending invitations.
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function index()
     {
@@ -92,6 +94,9 @@ class NotificationController extends Controller
 
     /**
      * Mark a notification as read.
+     *
+     * @param  \App\Models\Notification  $notification
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function markAsRead(Notification $notification)
     {
@@ -115,6 +120,8 @@ class NotificationController extends Controller
 
     /**
      * Mark all notifications as read.
+     *
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function markAllAsRead()
     {
@@ -140,6 +147,8 @@ class NotificationController extends Controller
 
     /**
      * Get the current unread notification count.
+     *
+     * @return \Illuminate\Http\JsonResponse
      */
     public function check()
     {

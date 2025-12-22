@@ -14,7 +14,11 @@ use Illuminate\Database\UniqueConstraintViolationException;
 class InvitationController extends Controller
 {
     /**
-     * OR03 Invite a user to an event.
+     * Invite a user to an event (OR03).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Event  $event
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function invite(Request $request, Event $event)
     {
@@ -28,6 +32,10 @@ class InvitationController extends Controller
         $effectiveStatus = $event->effective_status;
         if (in_array($effectiveStatus, ['canceled', 'completed', 'deleted'])) {
             return back()->withErrors(['invitee_email' => 'Cannot send invitations to ' . $effectiveStatus . ' events.']);
+        }
+
+        if ($event->is_full) {
+            return back()->withErrors(['invitee_email' => 'Event is full. Cannot invite more participants.']);
         }
 
         // Validate email instead of raw user ID
@@ -70,6 +78,14 @@ class InvitationController extends Controller
             return back()->withErrors(['invitee_email' => 'Event is full. Cannot send more invitations.']);
         }
 
+        // Duplicate invitation check (pending). Allow re-sending if previously declined or accepted-but-left.
+        $existingInvitation = Invitation::where('id_event', $event->id_event)
+            ->where('id_invitee', $inviteeUser->id_user)
+            ->first();
+        if ($existingInvitation && $existingInvitation->status === 'pending') {
+            return back()->withErrors(['invitee_email' => 'User already has an active invitation.']);
+        }
+
         // Check for pending application (Auto-approve if exists)
         $pendingApplication = \App\Models\Application::where('id_event', $event->id_event)
             ->where('id_user', $inviteeUser->id_user)
@@ -84,8 +100,24 @@ class InvitationController extends Controller
                     'decided_at' => now()
                 ]);
 
-                // Create participation
-                $event->participants()->attach($inviteeUser->id_user, ['joined_at' => now()]);
+                // Check if participation record exists (even if left)
+                $existingParticipation = DB::table('participation')
+                    ->where('id_event', $event->id_event)
+                    ->where('id_user', $inviteeUser->id_user)
+                    ->first();
+
+                if ($existingParticipation) {
+                    // Re-join: update existing record
+                    DB::table('participation')
+                        ->where('id_participation', $existingParticipation->id_participation)
+                        ->update([
+                            'left_at' => null,
+                            'joined_at' => now()
+                        ]);
+                } else {
+                    // New join: create record
+                    $event->participants()->attach($inviteeUser->id_user, ['joined_at' => now()]);
+                }
             });
 
             return back()->with('success', 'User had a pending application and has been added to the event!');
@@ -127,7 +159,7 @@ class InvitationController extends Controller
                 try {
                     DB::statement("SELECT setval(pg_get_serial_sequence('invitation','id_invitation'), " . ($max + 1) . ")");
                 } catch (\Throwable $seqE) {
-                    // ignore if fails
+                    // Ignore sequence reset failure
                 }
                 // Retry once
                 $invitation = Invitation::create([
@@ -139,7 +171,7 @@ class InvitationController extends Controller
             }
         }
 
-        // Optional notification insert (ignore errors in prototype)
+        // Optional notification insert
         try {
             DB::table('notification')->insert([
                 'id_user'       => $inviteeUser->id_user,
@@ -149,14 +181,17 @@ class InvitationController extends Controller
                 'created_at'    => now(),
             ]);
         } catch (\Throwable $e) {
-            // silently ignore in prototype
+            // Log error or ignore if notification fails
         }
 
         return back()->with('success', 'Invitation sent successfully to ' . $inviteeUser->email);
     }
 
     /**
-     * RU10 Accept invitation.
+     * Accept an invitation (RU10).
+     *
+     * @param  \App\Models\Invitation  $invitation
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function accept(Invitation $invitation)
     {
@@ -210,15 +245,20 @@ class InvitationController extends Controller
             return back()->withErrors(['invitation' => 'Cannot join a ' . $effectiveStatus . ' event.']);
         }
 
-        // Check if event is full
-        if ($event->is_full) {
+        $alreadyParticipating = DB::table('participation')
+            ->where('id_event', $event->id_event)
+            ->where('id_user', $invitation->id_invitee)
+            ->whereNull('left_at')
+            ->exists();
+
+        if (!$alreadyParticipating && $event->is_full) {
             if (request()->wantsJson()) {
-                return response()->json(['message' => 'Event is full. Cannot accept invitation.'], 422);
+                return response()->json(['message' => 'Event is full.'], 422);
             }
-            return back()->withErrors(['invitation' => 'Event is full. Cannot accept invitation.']);
+            return back()->withErrors(['invitation' => 'Event is full.']);
         }
 
-        // Idempotency: If already accepted, allow re-joining if they left
+        // Idempotency: If already accepted, just return success (and ensure participation)
         if ($invitation->status === 'accepted') {
             $participation = DB::table('participation')
                 ->where('id_event', $invitation->id_event)
@@ -263,38 +303,47 @@ class InvitationController extends Controller
             return back()->withErrors(['invitation' => 'Invitation already responded.']);
         }
 
-        $invitation->update([
-            'status'       => 'accepted',
-            'responded_at' => now(),
-        ]);
-
-        // Automatically create participation if not already present
         try {
-            DB::table('participation')->insert([
-                'id_event' => $invitation->id_event,
-                'id_user'  => $invitation->id_invitee,
-                'joined_at'=> now(),
-            ]);
-
-            // Clean up any pending application for this user (since they just joined via invite)
-            \App\Models\Application::where('id_event', $invitation->id_event)
-                ->where('id_user', $invitation->id_invitee)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'approved', 
-                    'decided_at' => now()
+            DB::transaction(function () use ($invitation, $event) {
+                $invitation->update([
+                    'status'       => 'accepted',
+                    'responded_at' => now(),
                 ]);
 
-            // Notify organizer
-            \App\Models\Notification::create([
-                'id_user' => $event->id_organizer,
-                'message' => 'user joined',
-                'id_event' => $event->id_event,
-                'id_invitation' => $invitation->id_invitation,
-                'created_at' => now(),
-            ]);
+                // Automatically create participation if not already present
+                try {
+                    DB::table('participation')->insert([
+                        'id_event' => $invitation->id_event,
+                        'id_user'  => $invitation->id_invitee,
+                        'joined_at'=> now(),
+                    ]);
+
+                    // Clean up any pending application for this user (since they just joined via invite)
+                    \App\Models\Application::where('id_event', $invitation->id_event)
+                        ->where('id_user', $invitation->id_invitee)
+                        ->where('status', 'pending')
+                        ->update([
+                            'status' => 'approved', 
+                            'decided_at' => now()
+                        ]);
+
+                    // Notify organizer
+                    \App\Models\Notification::create([
+                        'id_user' => $event->id_organizer,
+                        'message' => 'user joined',
+                        'id_event' => $event->id_event,
+                        'id_invitation' => $invitation->id_invitation,
+                        'created_at' => now(),
+                    ]);
+                } catch (\Throwable $e) {
+                    // ignore if constraint/trigger rejects
+                }
+            });
         } catch (\Throwable $e) {
-            // ignore if constraint/trigger rejects
+            if (request()->wantsJson()) {
+                return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'An error occurred while accepting the invitation.');
         }
 
         if (request()->wantsJson()) {
@@ -305,7 +354,10 @@ class InvitationController extends Controller
     }
 
     /**
-     * RU10 Decline invitation.
+     * Decline an invitation (RU10).
+     *
+     * @param  \App\Models\Invitation  $invitation
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function decline(Invitation $invitation)
     {
@@ -345,6 +397,9 @@ class InvitationController extends Controller
 
     /**
      * Cancel an invitation (Organizer only).
+     *
+     * @param  \App\Models\Invitation  $invitation
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Invitation $invitation)
     {
@@ -371,6 +426,8 @@ class InvitationController extends Controller
 
     /**
      * List current user's invitations (pending first then others).
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function index()
     {

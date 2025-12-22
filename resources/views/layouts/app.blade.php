@@ -16,6 +16,14 @@
 
     {{--CSRF token used by Laravel to protect POST forms from attacks--}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- Open Graph Tags for Social Media --}}
+    <meta property="og:title" content="@yield('title', config('app.name', 'EventSquare'))">
+    <meta property="og:description" content="EventSquare - The best place to manage and discover events.">
+    <meta property="og:image" content="{{ asset('images/og-image.jpg') }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:type" content="website">
+
         <!-- Scripts -->
         <script src="{{ asset('js/app.js') }}" defer></script>
         @stack('scripts')
@@ -42,6 +50,10 @@
 {{-- Tailwind class "font-sans" sets a clean font,
     "antialiased" makes text smoother.--}}
 <body class="font-sans antialiased">
+    {{-- Accessibility: Skip to content link --}}
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-indigo-600 text-white px-4 py-2 rounded-md z-50">
+        Skip to content
+    </a>
 
     {{--HEADER (top bar)--}}
     <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -160,7 +172,7 @@
     </header>
 
     {{--MAIN CONTENT AREA--}}
-    <main>
+    <main id="main-content">
         {{--Flash message: success.
             In controllers you can set: return back()->with('success', 'Message here');
             If such a message exists in the session, show this green box.--}}
@@ -232,9 +244,9 @@
             <div class="flex flex-col md:flex-row justify-between items-center gap-6">
                 {{-- Horizontal Links (Left) --}}
                 <nav class="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-2">
-                    <a href="#" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Help Center</a>
-                    <a href="#" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Terms of Service</a>
-                    <a href="#" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Privacy Policy</a>
+                    <a href="{{ route('faq') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">FAQ</a>
+                    <a href="{{ route('terms-of-service') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Terms of Service</a>
+                    <a href="{{ route('privacy-policy') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">Privacy Policy</a>
                     <a href="{{ route('about') }}" class="text-sm text-gray-500 hover:text-indigo-600 transition-colors">About Us</a>
                 </nav>
 

@@ -22,11 +22,14 @@
 
                 <!-- Form Header -->
                  {{--Colored bar at the top of the form with a title--}}
-                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-white flex items-center">
                         <i class="fas fa-calendar-plus mr-2"></i>
                         Event Details
                     </h2>
+                    <span class="text-xs text-indigo-100 bg-indigo-600/30 px-2 py-1 rounded">
+                        * Required fields
+                    </span>
                 </div>
 
                 <!-- Form Body -->

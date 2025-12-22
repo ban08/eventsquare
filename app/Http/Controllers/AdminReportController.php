@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class AdminReportController extends Controller
 {
+    /**
+     * Display a listing of event reports (AD04).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $status = $request->input('status', 'open');
@@ -32,6 +38,13 @@ class AdminReportController extends Controller
         return view('admin.reports.index', compact('reports', 'status'));
     }
 
+    /**
+     * Update the status of a report (AD04).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\EventReport  $report
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, EventReport $report)
     {
         $validated = $request->validate([

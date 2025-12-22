@@ -355,7 +355,7 @@
                         @endif
                     @endauth
 
-                    {{-- Join Action --}}
+                    {{-- Apply to an Event --}}
                     @auth
                         @php
                             $alreadyParticipant = $isParticipant;
@@ -370,33 +370,27 @@
                         @if(!$isAdmin && !$isOrganizer)
                             <div class="mt-8 pt-6 border-t border-slate-100">
                                 @if($alreadyParticipant)
-                                    @if($event->effective_status === 'canceled')
-                                        <div class="w-full rounded-xl bg-red-50 border border-red-200 p-4 text-center">
-                                            <div class="mx-auto h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2">
-                                                <i class="fas fa-ban text-xl"></i>
-                                            </div>
-                                            <h4 class="text-red-900 font-semibold">Event Canceled</h4>
-                                            <p class="text-red-700 text-xs mt-1">This event has been canceled by the organizer.</p>
+                                    <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                                        <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
+                                            <i class="fas fa-check text-xl"></i>
                                         </div>
-                                    @else
-                                        <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center mb-3">
-                                            <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
-                                                <i class="fas fa-check text-xl"></i>
-                                            </div>
-                                            <h4 class="text-green-900 font-semibold">You're going!</h4>
-                                            <p class="text-green-700 text-xs mt-1">See you there.</p>
-                                        </div>
+                                        <h4 class="text-green-900 font-semibold">You're going!</h4>
+                                        <p class="text-green-700 text-xs mt-1">See you there.</p>
 
-                                        {{-- Leave Event Button (AT01) --}}
-                                        @if(!$event->is_past && $event->start_at->copy()->subHours(24)->isFuture())
-                                            <form action="{{ route('events.leave', $event) }}" method="POST" onsubmit="return confirm('Are you sure you want to leave this event?');">
+                                        @if(!$event->start_at->copy()->subHours(24)->isPast())
+                                            <form action="{{ route('events.leave', $event) }}" method="POST" class="mt-4">
                                                 @csrf
-                                                <button type="submit" class="w-full rounded-xl bg-white border border-red-200 p-3 text-red-600 font-medium hover:bg-red-50 transition text-sm">
-                                                    Leave Event
+                                                <button type="submit"
+                                                    class="w-full rounded-xl bg-red-600 p-3 text-white font-semibold shadow hover:bg-red-700 transition">
+                                                Leave event
                                                 </button>
                                             </form>
-                                        @endif
-                                    @endif
+                                        @else
+                                            <p class="text-xs text-slate-500 mt-4">
+                                                You can’t leave less than 24 hours before the event starts.
+                                            </p>
+                                        @endif    
+                                    </div>
                                 @elseif($applicationStatus === 'pending')
                                     <div class="w-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-center">
                                         <div class="mx-auto h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-2">
@@ -411,7 +405,29 @@
                                             <i class="fas fa-times text-xl"></i>
                                         </div>
                                         <h4 class="text-red-900 font-semibold">Application Rejected</h4>
-                                        <p class="text-red-700 text-xs mt-1">The organizer has rejected your request or removed you from the event.</p>
+                                        <p class="text-red-700 text-xs mt-1">The organizer declined your request.</p>
+                                        @if($event->is_full)
+                                            <p class="text-red-700 text-xs mt-3">Event is full right now.</p>
+                                        @elseif($event->is_past)
+                                            <p class="text-red-700 text-xs mt-3">Event already ended.</p>
+                                        @elseif($event->effective_status !== 'published')
+                                            <p class="text-red-700 text-xs mt-3">Event {{ ucfirst($event->effective_status) }}.</p>
+                                        @else
+                                            <form action="{{ route('events.apply', $event) }}" method="POST" class="mt-3">
+                                                @csrf
+                                                <button class="w-full rounded-xl bg-red-600 p-3 text-white font-semibold shadow hover:bg-red-700 transition">
+                                                    Apply Again
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @elseif($applicationStatus === 'approved')
+                                    <div class="w-full rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                                        <div class="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-2">
+                                            <i class="fas fa-check text-xl"></i>
+                                        </div>
+                                        <h4 class="text-green-900 font-semibold">Application Accepted</h4>
+                                        <p class="text-green-700 text-xs mt-1">You have been accepted to this event.</p>
                                     </div>
                                 @elseif($event->is_full)
                                     <button disabled class="w-full rounded-xl bg-slate-100 border border-slate-200 p-3 text-slate-400 font-medium cursor-not-allowed">
@@ -760,47 +776,71 @@
 @endsection
 
 @push('scripts')
-<script>
+    <script>
     document.addEventListener('DOMContentLoaded', function() {
         const pollsContainer = document.getElementById('polls-container');
         if (!pollsContainer) return;
 
-        pollsContainer.addEventListener('submit', function(e) {
-            if (e.target.matches('.poll-vote-form') || e.target.matches('.poll-remove-vote-form')) {
-                e.preventDefault();
-                const form = e.target;
-                const formData = new FormData(form);
-                const action = form.action;
+        pollsContainer.addEventListener('submit', async function(e) {
+            const form = e.target;
+            const isVote = form.matches('.poll-vote-form');
+            const isRemove = form.matches('.poll-remove-vote-form');
+            if (!isVote && !isRemove) return;
 
-                // Disable button to prevent double submit
-                const btn = form.querySelector('button[type="submit"]');
-                if(btn) btn.disabled = true;
+            e.preventDefault();
 
-                fetch(action, {
+            const formData = new FormData(form);
+
+            if (isRemove) {
+            formData.append('_method', 'DELETE');
+            }
+
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch(form.action, {
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                     }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.html) {
-                        // Find the closest poll card and replace it
-                        const card = form.closest('[id^="poll-card-"]');
-                        if (card) {
-                            card.outerHTML = data.html;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    if(btn) btn.disabled = false;
-                    alert('An error occurred. Please try again.');
                 });
-            }
+
+                const contentType = res.headers.get('content-type') || '';
+                const bodyText = await res.text();
+
+                if (!contentType.includes('application/json')) {
+                    console.error('Response non-JSON:', bodyText);
+                    window.location.reload();
+                    return;
+                }
+
+                const data = JSON.parse(bodyText);
+
+                if (!res.ok) {
+                    console.error('HTTP error:', res.status, data);
+                    window.location.reload();
+                    return;
+                }
+
+                if (!data.html) {
+                    console.error('Missing html:', data);
+                    window.location.reload();
+                    return;
+                }
+
+                const card = form.closest('[id^="poll-card-"]');
+                if (card) card.outerHTML = data.html;
+
+            } catch (error) {
+                console.error('Vote error:', error);
+                window.location.reload();
+            } finally {
+                if (btn) btn.disabled = false;
+                }
+            });
         });
-    });
-</script>
+    </script>
 @endpush
