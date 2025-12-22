@@ -321,9 +321,24 @@ class EventController extends Controller
             return redirect()->route('login');
         }
 
+        $organizedSort = request('organized_sort', 'asc');
+        if (!in_array($organizedSort, ['asc', 'desc'], true)) {
+            $organizedSort = 'asc';
+        }
+
+        $participatedSort = request('participated_sort', 'asc');
+        if (!in_array($participatedSort, ['asc', 'desc'], true)) {
+            $participatedSort = 'asc';
+        }
+
+        $activeTab = request('tab', 'organized');
+        if (!in_array($activeTab, ['organized', 'participating'], true)) {
+            $activeTab = 'organized';
+        }
+
         // Get events organized by the user
         $organizedEvents = Event::where('id_organizer', Auth::id())
-            ->orderBy('start_at', 'asc')
+            ->orderBy('start_at', $organizedSort)
             ->get();
 
         // Get events where the user is a participant (has not left)
@@ -331,13 +346,16 @@ class EventController extends Controller
                 $query->where('id_user', Auth::id())
                       ->whereNull('left_at');
             })
-            ->orderBy('start_at', 'asc')
+            ->orderBy('start_at', $participatedSort)
             ->get();
 
         // Show a dedicated "my events" view with both types of events
         return view('events.mine', [
             'organizedEvents' => $organizedEvents,
-            'participatedEvents' => $participatedEvents
+            'participatedEvents' => $participatedEvents,
+            'activeTab' => $activeTab,
+            'organizedSort' => $organizedSort,
+            'participatedSort' => $participatedSort,
         ]);
     }   
     

@@ -45,6 +45,19 @@
                     @endcannot
                 </div>
             @else
+                <div class="mb-4 flex items-center justify-end">
+                    <form method="GET" action="{{ route('events.mine') }}" class="flex items-center gap-2 text-sm text-slate-600">
+                        <label for="organized_sort" class="font-medium">Sort by date</label>
+                        <input type="hidden" name="tab" value="organized">
+                        <input type="hidden" name="participated_sort" value="{{ $participatedSort }}">
+                        <select id="organized_sort" name="organized_sort"
+                                class="rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                onchange="this.form.submit()">
+                            <option value="asc" @selected($organizedSort === 'asc')>Ascending</option>
+                            <option value="desc" @selected($organizedSort === 'desc')>Descending</option>
+                        </select>
+                    </form>
+                </div>
                 <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     @foreach($organizedEvents as $event)
                         <div>
@@ -69,6 +82,19 @@
                     </a>
                 </div>
             @else
+                <div class="mb-4 flex items-center justify-end">
+                    <form method="GET" action="{{ route('events.mine') }}" class="flex items-center gap-2 text-sm text-slate-600">
+                        <label for="participated_sort" class="font-medium">Sort by date</label>
+                        <input type="hidden" name="tab" value="participating">
+                        <input type="hidden" name="organized_sort" value="{{ $organizedSort }}">
+                        <select id="participated_sort" name="participated_sort"
+                                class="rounded-md border-slate-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                onchange="this.form.submit()">
+                            <option value="asc" @selected($participatedSort === 'asc')>Ascending</option>
+                            <option value="desc" @selected($participatedSort === 'desc')>Descending</option>
+                        </select>
+                    </form>
+                </div>
                 <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     @foreach($participatedEvents as $event)
                         <div>
@@ -166,7 +192,8 @@
 
     // Initialize page with first tab active
     document.addEventListener('DOMContentLoaded', function() {
-        showTab('organized');
+        const initialTab = @json($activeTab);
+        showTab(initialTab);
     });
 </script>
 @endsection
