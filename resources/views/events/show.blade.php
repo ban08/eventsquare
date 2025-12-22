@@ -349,7 +349,7 @@
                     {{-- Apply to an Event --}}
                     @auth
                         @php
-                            $alreadyParticipant = $event->participants->contains(Auth::id());
+                            $alreadyParticipant = $isParticipant;;
                             $userApplication = $event->applications->firstWhere('id_user', Auth::id());
                             $alreadyApplied = $userApplication !== null;
                             $isOrganizer = $event->id_organizer == Auth::id();

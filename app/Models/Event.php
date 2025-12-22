@@ -79,7 +79,9 @@ class Event extends Model
             'participation',   
             'id_event',        
             'id_user'          
-        )->withPivot('joined_at', 'left_at'); 
+        )
+        ->withPivot('joined_at', 'left_at')
+        ->wherePivotNull('left_at');
     }
 
     // This event HAS MANY applications (people who applied to join).

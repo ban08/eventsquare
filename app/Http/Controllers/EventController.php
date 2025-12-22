@@ -575,7 +575,7 @@ class EventController extends Controller
             ->first();
 
         if ($existingApplication) {
-            if ($existingApplication->status === 'rejected') {
+            if (in_array($existingApplication->status, ['rejected', 'canceled'])) {
                 $existingApplication->update([
                     'status' => 'pending',
                     'created_at' => now(),
