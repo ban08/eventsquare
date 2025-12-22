@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tag;
+use App\Models\Invitation;
 use App\Models\Notification;
 use Carbon\Carbon;
 
