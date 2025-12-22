@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Event;
+use App\Models\Invitation;
+use App\Models\Notification;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -106,6 +109,29 @@ class ProfileController extends Controller
             $user->profile->update(['photo_url' => null]);
         }
 
+        // Auto-cancel published events organized by this user
+        $publishedEvents = Event::where('id_organizer', $user->id_user)
+            ->where('status', 'published')
+            ->get();
+
+        foreach ($publishedEvents as $event) {
+            $event->update(['status' => 'canceled']);
+
+            Invitation::where('id_event', $event->id_event)
+                ->where('status', 'pending')
+                ->update(['status' => 'canceled', 'responded_at' => now()]);
+
+            $participants = $event->participants()->wherePivot('left_at', null)->get();
+            foreach ($participants as $participant) {
+                Notification::create([
+                    'id_user' => $participant->id_user,
+                    'message' => 'event canceled',
+                    'id_event' => $event->id_event,
+                    'created_at' => now(),
+                ]);
+            }
+        }
+
         // Remove participations, applications, invitations
         $user->participations()->delete();
         $user->applications()->delete();
@@ -126,4 +152,3 @@ class ProfileController extends Controller
         return redirect('/')->with('success', 'Your account has been successfully deleted.');
     }
 }
-
